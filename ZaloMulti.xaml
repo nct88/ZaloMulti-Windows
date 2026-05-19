@@ -128,6 +128,32 @@
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
 
+        <!-- Nút tròn viền -->
+        <Style x:Key="RoundBtn" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource AccentBlue}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextOnAccent}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="RoundBorder" Background="{TemplateBinding Background}" CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="RoundBorder" Property="Opacity" Value="0.85"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="RoundBorder" Property="Opacity" Value="0.7"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Nút chính nổi bật (Thêm tài khoản) -->
         <Style x:Key="AccentBtn" TargetType="Button">
             <Setter Property="Background" Value="{DynamicResource AccentGradBrush}"/>
@@ -304,4 +330,6 @@
         </Grid>
     </Border>
 </Window>
+<!-- Bản quyền thuộc về truong.it - Tác giả: truong.it -->
+
 <!-- Bản quyền thuộc về truong.it - Tác giả: truong.it -->

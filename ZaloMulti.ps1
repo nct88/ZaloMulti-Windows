@@ -522,7 +522,7 @@ function Start-ZaloInstance {
     $processInfo.EnvironmentVariables["LOCALAPPDATA"] = $localPath
     
     try {
-        # Ghi nhan PID Zalo hien co TRUOC khi mo
+        # Ghi nhận PID Zalo hiện có TRƯỚC khi mở
         $existingPids = @()
         $existingProcs = Get-Process -Name "Zalo" -ErrorAction SilentlyContinue
         if ($existingProcs) { $existingPids = @($existingProcs | ForEach-Object { $_.Id }) }
@@ -530,14 +530,21 @@ function Start-ZaloInstance {
         $proc = [System.Diagnostics.Process]::Start($processInfo)
         # Lưu PID để theo dõi trạng thái
         if ($proc) {
-            # Cho Electron spawn child processes (3 giay)
-                Start-Sleep -Milliseconds 3000
+            # Dùng Timer thay vì Start-Sleep để không làm đơ giao diện (chống xoay chuột)
+            $pidTimer = New-Object System.Windows.Threading.DispatcherTimer
+            $pidTimer.Interval = [TimeSpan]::FromSeconds(3)
+            $pidTimer.Tag = @{ ProfilePath = $profilePath; ExistingPids = $existingPids; ProcId = $proc.Id }
+            $pidTimer.Add_Tick({
+                $t = $this.Tag
                 $allProcs = Get-Process -Name "Zalo" -ErrorAction SilentlyContinue
                 $newPids = @()
-                if ($allProcs) { $newPids = @($allProcs | Where-Object { $_.Id -notin $existingPids } | ForEach-Object { $_.Id }) }
-                $pidPath = Join-Path $profilePath "pid.txt"
+                if ($allProcs) { $newPids = @($allProcs | Where-Object { $_.Id -notin $t.ExistingPids } | ForEach-Object { $_.Id }) }
+                $pidPath = Join-Path $t.ProfilePath "pid.txt"
                 if ($newPids.Count -gt 0) { ($newPids -join ",") | Set-Content $pidPath -Force -Encoding ASCII }
-                else { $proc.Id | Set-Content $pidPath -Force -Encoding ASCII }
+                else { $t.ProcId | Set-Content $pidPath -Force -Encoding ASCII }
+                $this.Stop()
+            })
+            $pidTimer.Start()
         }
     } catch {
         [void][System.Windows.MessageBox]::Show("Không thể khởi chạy Zalo: $($_.Exception.Message)", "Lỗi", 0, 16)

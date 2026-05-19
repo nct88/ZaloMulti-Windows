@@ -1,4 +1,4 @@
-﻿# ============================================================
+# ============================================================
 # ZALỎMULTI - PHIÊN BẢN HOÀN THIỆN
 # BẢN QUYỀN TRUONG.IT
 # ============================================================
@@ -125,6 +125,15 @@ $Global:ZaloPath = ""
 foreach ($path in $CommonZaloPaths) {
     if (Test-Path $path) {
         $Global:ZaloPath = $path
+        # Áp dụng cơ chế ZManager-Pro: Tìm bản Versioned (ví dụ Zalo-24.5.1\Zalo.exe) để bỏ qua Squirrel Bootstrapper
+        $zaloDir = Split-Path $path
+        $versionDirs = Get-ChildItem -Path $zaloDir -Filter "Zalo-*" -Directory | Sort-Object Name -Descending
+        if ($versionDirs -and $versionDirs.Count -gt 0) {
+            $verPath = Join-Path $versionDirs[0].FullName "Zalo.exe"
+            if (Test-Path $verPath) {
+                $Global:ZaloPath = $verPath
+            }
+        }
         break
     }
 }

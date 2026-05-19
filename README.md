@@ -22,11 +22,12 @@
 
 ### Bước 1: Tải về
 
-👉 **[Nhấn vào đây để tải ZaloMulti](https://github.com/nct88/ZaloMulti-Win/archive/refs/heads/main.zip)**
+👉 **[Truy cập trang Releases để tải bản mới nhất](https://github.com/nct88/ZaloMulti-Windows/releases/latest)**
+*(Tải file `ZaloMulti.zip` ở phiên bản mới nhất)*
 
 ### Bước 2: Giải nén
 
-1. Tìm file **`ZaloMulti-Win-main.zip`** vừa tải trong thư mục `Downloads`
+1. Tìm file **`ZaloMulti.zip`** vừa tải trong thư mục `Downloads`
 2. **Chuột phải** vào file → chọn **"Extract All..."** (Giải nén tất cả)
 3. Chọn vị trí lưu (ví dụ: **Desktop** hoặc **ổ D:**) → nhấn **Extract**
 
@@ -35,15 +36,15 @@
 ### Bước 3: Khởi chạy
 
 Mở thư mục vừa giải nén → **nhấn đúp vào file `ZaloMulti.exe`** để chạy.
+*(Lưu ý: Nếu bạn tải từ mã nguồn gốc, hãy nhấn chuột phải vào file `ZaloMulti.ps1` và chọn **Run with PowerShell**)*
 
-```
-📁 ZaloMulti-Win-main/
-├── 🟢 ZaloMulti.exe     ← NHẤN ĐÚP FILE NÀY ĐỂ CHẠY
-├── 📄 ZaloMulti.ps1      (mã nguồn - không cần mở)
-├── 📄 ZaloMulti.xaml      (giao diện - không cần mở)
-├── 📁 Assets/             (icon, font)
-├── 📁 docs/               (trang web giới thiệu)
-└── 📁 update/             (tự động cập nhật)
+```text
+📁 ZaloMulti/
+├── 🟢 ZaloMulti.exe      ← NHẤN ĐÚP FILE NÀY ĐỂ CHẠY (Nếu tải từ Release)
+├── 📄 ZaloMulti.ps1      (mã nguồn - chạy bằng PowerShell nếu không có file exe)
+├── 📄 ZaloMulti.xaml     (giao diện)
+├── 📁 Assets/            (icon, font)
+└── 📁 docs/              (trang web giới thiệu)
 ```
 
 > 💡 **Mẹo**: Bạn có thể di chuyển cả thư mục đến bất kỳ vị trí nào trên máy. App chạy portable, không cần cài đặt.
@@ -70,10 +71,7 @@ Mở thư mục vừa giải nén → **nhấn đúp vào file `ZaloMulti.exe`**
 - Nhấn nút **🔗** trên thẻ tài khoản → tạo shortcut ngoài Desktop
 - Lần sau chỉ cần nhấn đúp shortcut để mở thẳng Zalo, không cần mở app
 
-### Sao lưu & Khôi phục
 
-- **📦 Sao lưu**: Nhấn nút "Sao lưu" → chọn tài khoản → lưu file `.zlp`
-- **📥 Khôi phục**: Nhấn nút "Khôi phục" → chọn file `.zlp` → nhập tên mới
 
 ### Đóng tất cả Zalo
 
@@ -96,7 +94,6 @@ Mở thư mục vừa giải nén → **nhấn đúp vào file `ZaloMulti.exe`**
 | 🎨 Giao diện hiện đại | Dark/Light mode, thiết kế macOS-style |
 | 🔗 Shortcut Desktop | Mở thẳng từng tài khoản từ Desktop |
 | 🔄 Cập nhật tự động | Tự kiểm tra & cập nhật khi có phiên bản mới |
-| 📦 Sao lưu & Khôi phục | Chuyển dữ liệu giữa các máy tính |
 | 📱 Lưu số ĐT | Ghi chú số điện thoại cho từng tài khoản |
 
 ---
@@ -154,17 +151,14 @@ Sau khi đăng nhập lần đầu, cần đợi 5–10 phút để Zalo đồng
 
 ## 📂 Cấu trúc dự án
 
-```
-ZaloMulti-Win/
-├── ZaloMulti.exe          # File khởi động (nhấn đúp để chạy)
+```text
+ZaloMulti-Windows/
 ├── ZaloMulti.ps1          # Mã nguồn chính (PowerShell)
-├── ZaloMulti.xaml          # Giao diện (WPF XAML)
+├── ZaloMulti.xaml         # Giao diện (WPF XAML)
 ├── version.txt            # Phiên bản hiện tại
 ├── changelog.txt          # Ghi chú cập nhật
-├── update.zip             # Gói cập nhật tự động
 ├── Assets/                # Icons, fonts, images
-├── docs/                  # GitHub Pages
-└── update/                # Bản cập nhật cho người dùng
+└── docs/                  # GitHub Pages
 ```
 
 ---

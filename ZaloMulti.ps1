@@ -68,7 +68,7 @@ try {
                 } catch {}
             }
         }
-        Start-Process "https://d.truong.it/donate"
+        # Donate được xử lý ở cuối script (có kiểm tra HWID đã donate chưa)
     }
 } catch {}
 # -----------------------
@@ -988,6 +988,56 @@ $Global:RefreshTimer = New-Object System.Windows.Threading.DispatcherTimer
 $Global:RefreshTimer.Interval = [TimeSpan]::FromSeconds(5)
 $Global:RefreshTimer.Add_Tick({ Refresh-StatusOnly })
 $Global:RefreshTimer.Start()
+
+# --- KIỂM TRA DONATE TRƯỚC KHI MỞ TRANG ---
+$donateStatusFile = Join-Path $Global:AppPath "donate_status.json"
+$shouldShowDonate = $true
+
+# Lấy HWID máy hiện tại
+$donateHWID = "UNKNOWN"
+try {
+    $donateHWID = (Get-CimInstance Win32_ComputerSystemProduct -ErrorAction SilentlyContinue).UUID
+    if (-not $donateHWID) {
+        $donateHWID = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Cryptography" -Name "MachineGuid" -ErrorAction SilentlyContinue).MachineGuid
+    }
+} catch {}
+
+if ($donateHWID -and $donateHWID -ne "UNKNOWN") {
+    # Bước 1: Kiểm tra cache local trước (tránh call API mỗi lần mở app)
+    if (Test-Path $donateStatusFile) {
+        try {
+            $donateCache = Get-Content $donateStatusFile -Raw -Encoding UTF8 | ConvertFrom-Json
+            if ($donateCache.hwid -eq $donateHWID -and $donateCache.donated -eq $true) {
+                $shouldShowDonate = $false
+            }
+        } catch {}
+    }
+
+    # Bước 2: Nếu chưa có cache → kiểm tra API (chạy ngầm, không chặn UI)
+    if ($shouldShowDonate) {
+        try {
+            [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+            $checkUrl = "https://donate-api.truong-it.workers.dev/hwid/check?id=$donateHWID"
+            $apiResponse = Invoke-RestMethod -Uri $checkUrl -Method Get -TimeoutSec 5 -ErrorAction SilentlyContinue
+            if ($apiResponse -and $apiResponse.donated -eq $true) {
+                $shouldShowDonate = $false
+                # Cache kết quả để lần sau không cần gọi API
+                $cacheData = @{ hwid = $donateHWID; donated = $true; checked_at = (Get-Date -Format "yyyy-MM-ddTHH:mm:ss") }
+                $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+                [System.IO.File]::WriteAllText($donateStatusFile, ($cacheData | ConvertTo-Json -Compress), $utf8NoBom)
+            }
+        } catch {
+            # API lỗi → vẫn hiện donate (an toàn)
+        }
+    }
+
+    if ($shouldShowDonate) {
+        Start-Process "https://truong.me/donate?hwid=$donateHWID" -ErrorAction SilentlyContinue | Out-Null
+    }
+} else {
+    # Không lấy được HWID → mở donate bình thường
+    Start-Process "https://truong.me/donate" -ErrorAction SilentlyContinue | Out-Null
+}
 
 $Global:window.ShowDialog() | Out-Null
 $Global:RefreshTimer.Stop()

@@ -275,17 +275,17 @@ function Export-ProfileUI {
     $sp.Margin = 15
     $lbl = New-Object System.Windows.Controls.TextBlock
     $lbl.Text = "Chọn tài khoản cần sao lưu:"; $lbl.Foreground = "White"; $lbl.FontSize = 14; $lbl.Margin = "0,0,0,10"
-    $sp.Children.Add($lbl)
+    [void]$sp.Children.Add($lbl)
     $lb = New-Object System.Windows.Controls.ListBox
     $lb.Height = 280; $lb.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#18191A")
     $lb.Foreground = "White"; $lb.FontSize = 13
-    foreach ($p in $profiles) { $lb.Items.Add($p.Name) | Out-Null }
-    $sp.Children.Add($lb)
+    foreach ($p in $profiles) { [void]$lb.Items.Add($p.Name) | Out-Null }
+    [void]$sp.Children.Add($lb)
 
     $btn = New-Object System.Windows.Controls.Button
     $btn.Content = "📦 BẮT ĐẦU SAO LƯU"; $btn.Height = 38; $btn.Margin = "0,10,0,0"; $btn.FontSize = 13
     $btn.Add_Click({ $subWin.DialogResult = $true; $subWin.Close() })
-    $sp.Children.Add($btn)
+    [void]$sp.Children.Add($btn)
 
     $subWin.Content = $sp
     if ($subWin.ShowDialog() -and $lb.SelectedItem) {
@@ -411,8 +411,8 @@ function Update-AppAccent {
         
         $brush = New-Object System.Windows.Media.LinearGradientBrush
         $brush.StartPoint = "0,0"; $brush.EndPoint = "1,1"
-        $brush.GradientStops.Add((New-Object System.Windows.Media.GradientStop([System.Windows.Media.Color]::FromRgb($c1.R, $c1.G, $c1.B), 0.0)))
-        $brush.GradientStops.Add((New-Object System.Windows.Media.GradientStop([System.Windows.Media.Color]::FromRgb($c2.R, $c2.G, $c2.B), 1.0)))
+        [void]$brush.GradientStops.Add((New-Object System.Windows.Media.GradientStop([System.Windows.Media.Color]::FromRgb($c1.R, $c1.G, $c1.B), 0.0)))
+        [void]$brush.GradientStops.Add((New-Object System.Windows.Media.GradientStop([System.Windows.Media.Color]::FromRgb($c2.R, $c2.G, $c2.B), 1.0)))
         
         $Global:window.Resources["AccentGradBrush"] = $brush
         Set-GlobalBrush "AccentBlue" $hex
@@ -715,9 +715,9 @@ function Update-AppUIList {
         
         $cardStack = New-Object System.Windows.Controls.StackPanel
         $headerGrid = New-Object System.Windows.Controls.Grid
-        $headerGrid.ColumnDefinitions.Add((New-Object System.Windows.Controls.ColumnDefinition -Property @{Width = New-Object System.Windows.GridLength(1, "Star")}))
-        $headerGrid.ColumnDefinitions.Add((New-Object System.Windows.Controls.ColumnDefinition -Property @{Width = New-Object System.Windows.GridLength(30)}))
-        $headerGrid.ColumnDefinitions.Add((New-Object System.Windows.Controls.ColumnDefinition -Property @{Width = New-Object System.Windows.GridLength(30)}))
+        [void]$headerGrid.ColumnDefinitions.Add((New-Object System.Windows.Controls.ColumnDefinition -Property @{Width = New-Object System.Windows.GridLength(1, "Star")}))
+        [void]$headerGrid.ColumnDefinitions.Add((New-Object System.Windows.Controls.ColumnDefinition -Property @{Width = New-Object System.Windows.GridLength(30)}))
+        [void]$headerGrid.ColumnDefinitions.Add((New-Object System.Windows.Controls.ColumnDefinition -Property @{Width = New-Object System.Windows.GridLength(30)}))
 
         $nameBox = New-Object System.Windows.Controls.TextBox
         $nameBox.Text = $name.ToUpper(); $nameBox.Style = $Global:window.Resources["EditBox"]
@@ -779,7 +779,7 @@ function Update-AppUIList {
             }
         })
 
-        $headerGrid.Children.Add($nameBox); $headerGrid.Children.Add($scBtn); $headerGrid.Children.Add($delBorder)
+        [void]$headerGrid.Children.Add($nameBox); [void]$headerGrid.Children.Add($scBtn); [void]$headerGrid.Children.Add($delBorder)
 
         $nameBox.Add_LostFocus({
             $newName = $this.Text.Trim(); $oldName = $this.Tag
@@ -804,8 +804,8 @@ function Update-AppUIList {
         })
 
         $grid = New-Object System.Windows.Controls.Grid
-        $grid.ColumnDefinitions.Add((New-Object System.Windows.Controls.ColumnDefinition -Property @{Width = New-Object System.Windows.GridLength(40)}))
-        $grid.ColumnDefinitions.Add((New-Object System.Windows.Controls.ColumnDefinition -Property @{Width = New-Object System.Windows.GridLength(1, "Star")}))
+        [void]$grid.ColumnDefinitions.Add((New-Object System.Windows.Controls.ColumnDefinition -Property @{Width = New-Object System.Windows.GridLength(40)}))
+        [void]$grid.ColumnDefinitions.Add((New-Object System.Windows.Controls.ColumnDefinition -Property @{Width = New-Object System.Windows.GridLength(1, "Star")}))
         $grid.Margin = "0,0,0,15"
 
         $phonePrefix = New-Object System.Windows.Controls.TextBlock
@@ -821,7 +821,7 @@ function Update-AppUIList {
         $phoneBox.Add_LostFocus({
             $this.Text.Trim() | Set-Content (Join-Path $this.Tag "phone.txt") -Force -Encoding UTF8
         })
-        $grid.Children.Add($phonePrefix); $grid.Children.Add($phoneBox)
+        [void]$grid.Children.Add($phonePrefix); [void]$grid.Children.Add($phoneBox)
 
         # Badge trạng thái tài khoản
         $statusPanel = New-Object System.Windows.Controls.StackPanel
@@ -840,7 +840,7 @@ function Update-AppUIList {
             $statusDot.Text = "●"; $statusDot.Foreground = [System.Windows.Media.Brushes]::Gray; $statusDot.FontSize = 14
             $statusLabel.Text = "Chưa mở"; $statusLabel.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, "TextSec")
         }
-        $statusPanel.Children.Add($statusDot); $statusPanel.Children.Add($statusLabel)
+        [void]$statusPanel.Children.Add($statusDot); [void]$statusPanel.Children.Add($statusLabel)
 
         $launchBtn = New-Object System.Windows.Controls.Button
         $launchBtn.Content = "MỞ TÀI KHOẢN"; $launchBtn.Style = $Global:window.Resources["RoundBtn"]
@@ -872,9 +872,9 @@ function Update-AppUIList {
             $this.BorderThickness = [System.Windows.Thickness]::new(1)
         })
         
-        $cardStack.Children.Add($headerGrid); $cardStack.Children.Add($grid); $cardStack.Children.Add($statusPanel); $cardStack.Children.Add($launchBtn)
+        [void]$cardStack.Children.Add($headerGrid); [void]$cardStack.Children.Add($grid); [void]$cardStack.Children.Add($statusPanel); [void]$cardStack.Children.Add($launchBtn)
         $border.Child = $cardStack
-        $Global:InstanceGrid.Children.Add($border)
+        [void]$Global:InstanceGrid.Children.Add($border)
     }
     # Cập nhật số lượng tài khoản đang hoạt động trên tiêu đề
     $Global:TxtVersion.Text = "Phiên bản $Global:Version • $activeCount/$count đang mở"

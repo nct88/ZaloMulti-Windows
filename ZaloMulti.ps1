@@ -25,7 +25,7 @@ trap {
 }
 
 # Cấu hình toàn cầu
-$Global:Version = "2.1.0" # Fix crash EXE, thêm icon, đồng bộ màu nút theo theme
+$Global:Version = "2.1.1" # Tối ưu tính năng và giới hạn 2 tài khoản
 # Khi chạy từ ps2exe (.exe), $PSScriptRoot rỗng → fallback sang đường dẫn exe
 if ($PSScriptRoot -and $PSScriptRoot -ne "") {
     $Global:AppPath = $PSScriptRoot

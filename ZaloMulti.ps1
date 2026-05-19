@@ -32,6 +32,17 @@ if (-not $Global:AppPath) {
 }
 $Global:IconFolder = Join-Path $Global:AppPath "Assets"
 
+function Write-AppLog {
+    param([string]$message)
+    try {
+        $logPath = Join-Path $Global:AppPath "ZaloMulti.log"
+        $time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        "$time - $message" | Out-File -FilePath $logPath -Append -Encoding UTF8
+    } catch {}
+}
+
+Write-AppLog "--- ZALOMULTI STARTED ---"
+
 # Fix lỗi load font do đường dẫn chứa khoảng trắng (nguyên nhân gây crash XAML)
 $Global:FontPath = "file:///$($Global:AppPath.Replace('\','/').Replace(' ','%20'))/Assets/#Pin-Sans-Regular"
 
@@ -522,31 +533,45 @@ function Start-ZaloInstance {
     $processInfo.EnvironmentVariables["LOCALAPPDATA"] = $localPath
     
     try {
+        Write-AppLog "Đang khởi chạy tài khoản: $name"
+        [System.Windows.Input.Mouse]::OverrideCursor = [System.Windows.Input.Cursors]::Arrow
+
         # Ghi nhận PID Zalo hiện có TRƯỚC khi mở
         $existingPids = @()
         $existingProcs = Get-Process -Name "Zalo" -ErrorAction SilentlyContinue
         if ($existingProcs) { $existingPids = @($existingProcs | ForEach-Object { $_.Id }) }
 
         $proc = [System.Diagnostics.Process]::Start($processInfo)
+        Write-AppLog "Tiến trình Zalo $name đã khởi tạo. Chờ cấp PID..."
+        
         # Lưu PID để theo dõi trạng thái
         if ($proc) {
             # Dùng Timer thay vì Start-Sleep để không làm đơ giao diện (chống xoay chuột)
             $pidTimer = New-Object System.Windows.Threading.DispatcherTimer
             $pidTimer.Interval = [TimeSpan]::FromSeconds(3)
-            $pidTimer.Tag = @{ ProfilePath = $profilePath; ExistingPids = $existingPids; ProcId = $proc.Id }
+            $pidTimer.Tag = @{ ProfilePath = $profilePath; ExistingPids = $existingPids; ProcId = $proc.Id; Name = $name }
             $pidTimer.Add_Tick({
                 $t = $this.Tag
                 $allProcs = Get-Process -Name "Zalo" -ErrorAction SilentlyContinue
                 $newPids = @()
                 if ($allProcs) { $newPids = @($allProcs | Where-Object { $_.Id -notin $t.ExistingPids } | ForEach-Object { $_.Id }) }
                 $pidPath = Join-Path $t.ProfilePath "pid.txt"
-                if ($newPids.Count -gt 0) { ($newPids -join ",") | Set-Content $pidPath -Force -Encoding ASCII }
-                else { $t.ProcId | Set-Content $pidPath -Force -Encoding ASCII }
+                if ($newPids.Count -gt 0) { 
+                    ($newPids -join ",") | Set-Content $pidPath -Force -Encoding ASCII 
+                    Write-AppLog "Đã bắt được PID con cho $($t.Name): $($newPids -join ',')"
+                }
+                else { 
+                    $t.ProcId | Set-Content $pidPath -Force -Encoding ASCII 
+                    Write-AppLog "Không tìm thấy PID con, dùng PID cha cho $($t.Name): $($t.ProcId)"
+                }
+                [System.Windows.Input.Mouse]::OverrideCursor = $null
                 $this.Stop()
             })
             $pidTimer.Start()
         }
     } catch {
+        [System.Windows.Input.Mouse]::OverrideCursor = $null
+        Write-AppLog "Lỗi khi khởi chạy $name: $($_.Exception.Message)"
         [void][System.Windows.MessageBox]::Show("Không thể khởi chạy Zalo: $($_.Exception.Message)", "Lỗi", 0, 16)
     }
 }
@@ -702,6 +727,7 @@ function Repair-OldShortcuts {
 }
 
 function Update-AppUIList {
+    Write-AppLog "Rendering UI List..."
     $Global:InstanceGrid.Children.Clear()
     $profiles = Get-ChildItem $Global:ProfileRoot | Where-Object { $_.PSIsContainer } | Sort-Object CreationTime
     $count = 0
@@ -934,11 +960,13 @@ $Global:BtnAdd.Add_Click({
 })
 
 $Global:BtnKillAll.Add_Click({
+    Write-AppLog "Đóng tất cả tiến trình Zalo."
     Get-Process Zalo -ErrorAction SilentlyContinue | Stop-Process -Force
     [void][System.Windows.MessageBox]::Show("Đã đóng tất cả các phiên làm việc.")
 })
 
-$Global:BtnClose.Add_Click({ $Global:window.Close() })
+$Global:BtnClose.Add_Click({
+    Write-AppLog "Người dùng đóng ứng dụng ZaloMulti." $Global:window.Close() })
 $Global:window.FindName("BtnMin").Add_Click({ $Global:window.WindowState = 'Minimized' })
 $Global:window.FindName("BtnMax").Add_Click({ 
     if ($Global:window.WindowState -eq 'Maximized') { $Global:window.WindowState = 'Normal' }
@@ -1047,4 +1075,5 @@ if ($donateHWID -and $donateHWID -ne "UNKNOWN") {
 }
 
 $Global:window.ShowDialog() | Out-Null
+Write-AppLog "--- ZALOMULTI EXITED ---"
 $Global:RefreshTimer.Stop()

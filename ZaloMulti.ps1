@@ -20,18 +20,13 @@ Add-Type -TypeDefinition $Win32Code -ErrorAction SilentlyContinue
 
 # Bẫy lỗi toàn cục — hiện MessageBox nếu crash thay vì tắt im lặng
 trap {
-    [System.Windows.MessageBox]::Show("ZaloMulti gặp lỗi khởi động:`n`n$($_.Exception.Message)`n`nFile: $($_.InvocationInfo.ScriptName)`nDòng: $($_.InvocationInfo.ScriptLineNumber)", "Lỗi ZaloMulti", 0, 16)
+    [void][System.Windows.MessageBox]::Show("ZaloMulti gặp lỗi khởi động:`n`n$($_.Exception.Message)`n`nFile: $($_.InvocationInfo.ScriptName)`nDòng: $($_.InvocationInfo.ScriptLineNumber)", "Lỗi ZaloMulti", 0, 16)
     exit 1
 }
 
 # Cấu hình toàn cầu
-$Global:Version = "2.1.1" # Tối ưu tính năng và giới hạn 2 tài khoản
-# Khi chạy từ ps2exe (.exe), $PSScriptRoot rỗng → fallback sang đường dẫn exe
-if ($PSScriptRoot -and $PSScriptRoot -ne "") {
-    $Global:AppPath = $PSScriptRoot
-} else {
-    $Global:AppPath = [System.IO.Path]::GetDirectoryName([System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName)
-}
+$Global:Version = "2.0.6" # Cập nhật giao diện, sửa lỗi khởi động, thêm bảo vệ nguồn
+$Global:AppPath = $PSScriptRoot
 $Global:IconFolder = Join-Path $Global:AppPath "Assets"
 
 # Fix lỗi load font do đường dẫn chứa khoảng trắng (nguyên nhân gây crash XAML)
@@ -70,7 +65,7 @@ try {
                 } catch {}
             }
         }
-        # Donate được xử lý ở cuối script (có kiểm tra HWID đã donate chưa)
+        Start-Process "https://d.truong.it/donate"
     }
 } catch {}
 # -----------------------
@@ -80,7 +75,7 @@ $Global:ProfileRoot = "C:\Zalo_Clone_Profiles"
 $CustomPathFile = Join-Path $Global:AppPath "custom_path.txt"
 $Global:SettingsFile = Join-Path $Global:AppPath "settings.json"
 $Global:CurrentTheme = "Dark"
-$Global:CurrentAccent = "#007AFF"
+$Global:CurrentAccent = "#74B9FF"
 
 # Tải hoặc hỏi đường dẫn tùy chỉnh
 if (Test-Path $CustomPathFile) {
@@ -121,7 +116,7 @@ foreach ($path in $CommonZaloPaths) {
 }
 
 if (-not $Global:ZaloPath) {
-    [System.Windows.MessageBox]::Show("Không tìm thấy Zalo.exe trên hệ thống! Vui lòng cài đặt Zalo trước.", "Lỗi Hệ Thống", 0, 16)
+    [void][System.Windows.MessageBox]::Show("Không tìm thấy Zalo.exe trên hệ thống! Vui lòng cài đặt Zalo trước.", "Lỗi Hệ Thống", 0, 16)
     exit
 }
 
@@ -176,6 +171,7 @@ if ($launchIdx -ge 0) {
                 $randomHash = [System.Guid]::NewGuid().ToString("n")
                 "$randomPart1.$timestamp.$randomHash" | Set-Content $zuFile -Force -Encoding ASCII
             }
+            # [REMOVED v2.0.4] Zalo tu tao device identity
             $utf8NoBom = New-Object System.Text.UTF8Encoding $false
 
             $configPath = Join-Path $zaloDataPath "config.json"
@@ -185,7 +181,6 @@ if ($launchIdx -ge 0) {
                 [System.IO.File]::WriteAllText($configPath, $configContent, $utf8NoBom)
             }
 
-            # Launch Zalo với ProcessStartInfo (FAST PATH — exit sau khi launch, không cần async)
             $processInfo = New-Object System.Diagnostics.ProcessStartInfo
             $processInfo.FileName = $Global:ZaloPath
             $processInfo.UseShellExecute = $false
@@ -193,18 +188,20 @@ if ($launchIdx -ge 0) {
             $processInfo.EnvironmentVariables["APPDATA"] = $roamingPath
             $processInfo.EnvironmentVariables["LOCALAPPDATA"] = $localPath
             try {
-                $existingPids = @()
-                $existingProcs = Get-Process -Name "Zalo" -ErrorAction SilentlyContinue
-                if ($existingProcs) { $existingPids = @($existingProcs | ForEach-Object { $_.Id }) }
+                # Ghi nhan PID Zalo hien co TRUOC khi mo
+        $existingPids = @()
+        $existingProcs = Get-Process -Name "Zalo" -ErrorAction SilentlyContinue
+        if ($existingProcs) { $existingPids = @($existingProcs | ForEach-Object { $_.Id }) }
 
-                $proc = [System.Diagnostics.Process]::Start($processInfo)
+        $proc = [System.Diagnostics.Process]::Start($processInfo)
+                if ($proc) { # Cho Electron spawn child processes (3 giay)
                 Start-Sleep -Milliseconds 3000
                 $allProcs = Get-Process -Name "Zalo" -ErrorAction SilentlyContinue
                 $newPids = @()
                 if ($allProcs) { $newPids = @($allProcs | Where-Object { $_.Id -notin $existingPids } | ForEach-Object { $_.Id }) }
                 $pidPath = Join-Path $profilePath "pid.txt"
                 if ($newPids.Count -gt 0) { ($newPids -join ",") | Set-Content $pidPath -Force -Encoding ASCII }
-                else { $proc.Id | Set-Content $pidPath -Force -Encoding ASCII }
+                else { $proc.Id | Set-Content $pidPath -Force -Encoding ASCII } }
             } catch { }
         }
         exit
@@ -225,17 +222,10 @@ if ($consolePtr -ne [IntPtr]::Zero) {
     [Win32]::ShowWindow($consolePtr, 0)
 }
 
-# Đặt Icon cho Window (hiển thị trên taskbar)
-$iconPath = Join-Path $Global:IconFolder "zalo_01_Do.ico"
-if (Test-Path $iconPath) {
-    try {
-        $Global:window.Icon = [System.Windows.Media.Imaging.BitmapFrame]::Create([Uri]"file:///$iconPath")
-    } catch {}
-}
-
 # Ánh xạ UI
 $Global:BtnAdd = $Global:window.FindName("BtnAdd")
-
+$Global:BtnExport = $Global:window.FindName("BtnExport")
+$Global:BtnImport = $Global:window.FindName("BtnImport")
 $Global:BtnKillAll = $Global:window.FindName("BtnKillAll")
 $Global:InstanceGrid = $Global:window.FindName("InstanceGrid")
 $Global:BtnClose = $Global:window.FindName("BtnClose")
@@ -266,6 +256,91 @@ $Global:ImgTG.Source = Get-ZaloBitmap "telegram.png"
 $Global:ImgGH.Source = Get-ZaloBitmap "github.png"
 $Global:ImgWS.Source = Get-ZaloBitmap "website.png"
 
+# --- CHỨC NĂNG SAO LƯU ---
+function Export-ProfileUI {
+    $profiles = Get-ChildItem $Global:ProfileRoot -ErrorAction SilentlyContinue | Where-Object { $_.PSIsContainer }
+    if (-not $profiles -or $profiles.Count -eq 0) { [void][System.Windows.MessageBox]::Show("Không tìm thấy profile nào để sao lưu!", "Sao lưu", 0, 48); return }
+
+    $subWin = New-Object System.Windows.Window
+    $subWin.Title = "Chọn Profile Sao Lưu"
+    $subWin.Width = 320; $subWin.Height = 420
+    $subWin.WindowStartupLocation = "CenterOwner"
+    $subWin.Owner = $Global:window
+    $subWin.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#242526")
+
+    $sp = New-Object System.Windows.Controls.StackPanel
+    $sp.Margin = 15
+    $lbl = New-Object System.Windows.Controls.TextBlock
+    $lbl.Text = "Chọn tài khoản cần sao lưu:"; $lbl.Foreground = "White"; $lbl.FontSize = 14; $lbl.Margin = "0,0,0,10"
+    $sp.Children.Add($lbl)
+    $lb = New-Object System.Windows.Controls.ListBox
+    $lb.Height = 280; $lb.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#18191A")
+    $lb.Foreground = "White"; $lb.FontSize = 13
+    foreach ($p in $profiles) { $lb.Items.Add($p.Name) | Out-Null }
+    $sp.Children.Add($lb)
+
+    $btn = New-Object System.Windows.Controls.Button
+    $btn.Content = "📦 BẮT ĐẦU SAO LƯU"; $btn.Height = 38; $btn.Margin = "0,10,0,0"; $btn.FontSize = 13
+    $btn.Add_Click({ $subWin.DialogResult = $true; $subWin.Close() })
+    $sp.Children.Add($btn)
+
+    $subWin.Content = $sp
+    if ($subWin.ShowDialog() -and $lb.SelectedItem) {
+        $name = $lb.SelectedItem
+        $timestamp = Get-Date -Format "HHmmss-ddMMyy"
+        $fileNameFriendly = $name.ToLower().Replace(" ", "-")
+        
+        $save = New-Object Microsoft.Win32.SaveFileDialog
+        $save.Filter = "Zalo Profile Package (*.zlp)|*.zlp"
+        $save.FileName = "$fileNameFriendly-$timestamp.zlp"
+        
+        if ($save.ShowDialog()) {
+            try {
+                $sourcePath = Join-Path $Global:ProfileRoot $name
+                $destZip = $save.FileName
+                [void][System.Windows.MessageBox]::Show("Đang sao lưu... Vui lòng chờ.`nQuá trình này có thể mất vài phút tùy dung lượng.", "Sao lưu", 0, 64)
+                # Compress-Archive yêu cầu đuôi .zip → nén ra .zip tạm rồi đổi tên
+                $tempZipFile = [System.IO.Path]::ChangeExtension($destZip, ".zip")
+                if (Test-Path $tempZipFile) { Remove-Item $tempZipFile -Force }
+                Compress-Archive -Path "$sourcePath\*" -DestinationPath $tempZipFile -Force
+                if ($tempZipFile -ne $destZip) {
+                    if (Test-Path $destZip) { Remove-Item $destZip -Force }
+                    Move-Item -Path $tempZipFile -Destination $destZip -Force
+                }
+                [void][System.Windows.MessageBox]::Show("Sao lưu thành công!`n$destZip", "Hoàn tất", 0, 64)
+            } catch {
+                [void][System.Windows.MessageBox]::Show("Lỗi khi sao lưu:`n$($_.Exception.Message)", "Lỗi sao lưu", 0, 16)
+            }
+        }
+    }
+}
+
+# --- CHỨC NĂNG NHẬP ---
+function Import-ProfileUI {
+    $open = New-Object Microsoft.Win32.OpenFileDialog
+    $open.Filter = "Zalo Profile Package (*.zlp)|*.zlp"
+    $open.Title = "Chọn file sao lưu (.zlp) để khôi phục"
+    
+    if ($open.ShowDialog()) {
+        try {
+            Add-Type -AssemblyName Microsoft.VisualBasic
+            $defaultName = [System.IO.Path]::GetFileNameWithoutExtension($open.FileName).Replace("Backup_Zalo_", "")
+            $newName = [Microsoft.VisualBasic.Interaction]::InputBox("Nhập tên cho tài khoản mới:", "Khôi phục dữ liệu", $defaultName)
+            
+            if ($newName) {
+                $destPath = Join-Path $Global:ProfileRoot $newName
+                if (Test-Path $destPath) { [void][System.Windows.MessageBox]::Show("Tên '$newName' đã tồn tại! Vui lòng chọn tên khác.", "Trùng tên", 0, 48); return }
+                
+                New-Item -ItemType Directory -Path $destPath -Force | Out-Null
+                Expand-Archive -Path $open.FileName -DestinationPath $destPath -Force
+                Update-AppUIList
+                [void][System.Windows.MessageBox]::Show("Khôi phục dữ liệu thành công!`nTài khoản '$newName' đã sẵn sàng.", "Hoàn tất", 0, 64)
+            }
+        } catch {
+            [void][System.Windows.MessageBox]::Show("Lỗi khi khôi phục dữ liệu:`n$($_.Exception.Message)", "Lỗi khôi phục", 0, 16)
+        }
+    }
+}
 
 function Set-GlobalBrush {
     param($key, $hex)
@@ -296,49 +371,29 @@ function Set-AppTheme {
         $anim.EasingFunction.EasingMode = "EaseInOut"
 
         if ($mode -eq "Dark") {
-            # macOS Dark Mode palette
-            Set-GlobalBrush "BgDark" "#1C1C1E"
+            Set-GlobalBrush "BgDark" "#1E1E1E"
             Set-GlobalBrush "BgSidebar" "#2C2C2E"
-            Set-GlobalBrush "BgCard" "#2C2C2E"
+            Set-GlobalBrush "BgCard" "#3A3A3C"
             Set-GlobalBrush "BgToggle" "#48484A"
-            Set-GlobalBrush "BorderBrush" "#3A3A3C"
+            Set-GlobalBrush "BorderBrush" "#38383A"
             Set-GlobalBrush "TextMain" "#FFFFFF"
-            Set-GlobalBrush "TextSec" "#98989D"
-
-            # Nút đóng tất cả - nền xanh, chữ trắng
-            Set-GlobalBrush "KillAllBtnBg" "#007AFF"
-            Set-GlobalBrush "KillAllBtnFg" "#FFFFFF"
-            # Nút mạng xã hội - nền xám, đổ bóng đen nhẹ
-            Set-GlobalBrush "SocialBtnBg" "#48484A"
-            try { $Global:window.Resources["SocialShadowColor"] = [System.Windows.Media.ColorConverter]::ConvertFromString("#40000000") } catch { }
+            Set-GlobalBrush "TextSec" "#8E8E93"
             $anim.To = 40
             $Global:ThemeIndicator.RenderTransform.BeginAnimation([System.Windows.Media.TranslateTransform]::XProperty, $anim)
             $Global:BtnDark.Foreground = [System.Windows.Media.Brushes]::White
             $Global:BtnLight.Foreground = $Global:window.Resources["TextSec"]
-            # Đồng bộ accent buttons theo theme: Dark = xanh
-            Update-AppAccent "#007AFF" $isInitial
         } else {
-            # macOS Light Mode palette
-            Set-GlobalBrush "BgDark" "#F5F5F7"
-            Set-GlobalBrush "BgSidebar" "#E8E8ED"
+            Set-GlobalBrush "BgDark" "#F2F2F7"
+            Set-GlobalBrush "BgSidebar" "#E5E5EA"
             Set-GlobalBrush "BgCard" "#FFFFFF"
             Set-GlobalBrush "BgToggle" "#D1D1D6"
-            Set-GlobalBrush "BorderBrush" "#D2D2D7"
-            Set-GlobalBrush "TextMain" "#1D1D1F"
-            Set-GlobalBrush "TextSec" "#86868B"
-
-            # Nút đóng tất cả - nền đỏ, chữ trắng
-            Set-GlobalBrush "KillAllBtnBg" "#FF3B30"
-            Set-GlobalBrush "KillAllBtnFg" "#FFFFFF"
-            # Nút mạng xã hội - nền trắng, đổ bóng xám nhẹ
-            Set-GlobalBrush "SocialBtnBg" "#FFFFFF"
-            try { $Global:window.Resources["SocialShadowColor"] = [System.Windows.Media.ColorConverter]::ConvertFromString("#30000000") } catch { }
+            Set-GlobalBrush "BorderBrush" "#C6C6C8"
+            Set-GlobalBrush "TextMain" "#000000"
+            Set-GlobalBrush "TextSec" "#8E8E93"
             $anim.To = 0
             $Global:ThemeIndicator.RenderTransform.BeginAnimation([System.Windows.Media.TranslateTransform]::XProperty, $anim)
             $Global:BtnLight.Foreground = [System.Windows.Media.Brushes]::White
             $Global:BtnDark.Foreground = $Global:window.Resources["TextSec"]
-            # Đồng bộ accent buttons theo theme: Light = đỏ
-            Update-AppAccent "#FF3B30" $isInitial
         }
     } catch { }
 }
@@ -349,11 +404,7 @@ function Update-AppAccent {
         $Global:CurrentAccent = $hex
         if (-not $isInitial) { Save-AppSettings }
         $c1 = [System.Drawing.ColorTranslator]::FromHtml($hex)
-        # Tạo gradient nhẹ cho nút accent
-        $darkerR = [Math]::Max(0, [int]($c1.R * 0.8))
-        $darkerG = [Math]::Max(0, [int]($c1.G * 0.8))
-        $darkerB = [Math]::Max(0, [int]($c1.B * 0.8))
-        $c2 = [System.Drawing.Color]::FromArgb(255, $darkerR, $darkerG, $darkerB)
+        $c2 = [System.Drawing.Color]::FromArgb(255, [int]($c1.R * 0.7), [int]($c1.G * 0.7), [int]($c1.B * 0.7))
         
         $brush = New-Object System.Windows.Media.LinearGradientBrush
         $brush.StartPoint = "0,0"; $brush.EndPoint = "1,1"
@@ -364,8 +415,9 @@ function Update-AppAccent {
         Set-GlobalBrush "AccentBlue" $hex
         $Global:BtnAdd.Background = $brush
         
-        # Luôn giữ text trắng trên accent button để đảm bảo contrast
-        Set-GlobalBrush "TextOnAccent" "#FFFFFF"
+        $lum = (0.299 * $c1.R + 0.587 * $c1.G + 0.114 * $c1.B)
+        if ($lum -gt 150) { Set-GlobalBrush "TextOnAccent" "#000000" }
+        else { Set-GlobalBrush "TextOnAccent" "#FFFFFF" }
     } catch { }
 }
 
@@ -421,9 +473,9 @@ function New-AppShortcut {
             $startMenuLnk = Join-Path $startMenuPath "$safeName.lnk"
             Copy-Item $ShortcutPath $startMenuLnk -Force
         } catch { }
-        [System.Windows.MessageBox]::Show("Đã tạo lối tắt cho '$name' ngoài Desktop.`nBạn có thể Pin to Start từ menu Start.")
+        [void][System.Windows.MessageBox]::Show("Đã tạo lối tắt cho '$name' ngoài Desktop.`nBạn có thể Pin to Start từ menu Start.")
     } catch {
-        [System.Windows.MessageBox]::Show("Lỗi khi tạo shortcut: $($_.Exception.Message)")
+        [void][System.Windows.MessageBox]::Show("Lỗi khi tạo shortcut: $($_.Exception.Message)")
     }
 }
 
@@ -444,9 +496,12 @@ function Start-ZaloInstance {
         $randomPart1 = -join ((1..19) | ForEach-Object { Get-Random -Minimum 0 -Maximum 10 })
         $timestamp = [DateTimeOffset]::Now.ToUnixTimeMilliseconds()
         $randomHash = [System.Guid]::NewGuid().ToString("n")
-        "$randomPart1.$timestamp.$randomHash" | Set-Content $zuFile -Force -Encoding ASCII
+        $zuContent = "$randomPart1.$timestamp.$randomHash"
+        $zuContent | Set-Content $zuFile -Force -Encoding ASCII
     }
 
+    # [REMOVED v2.0.4] Khong tao storage.json - Zalo tu tao device identity
+    # [REMOVED v2.0.4] Zalo tu tao device identity - khong can tao storage.json
 
     $configPath = Join-Path $zaloDataPath "config.json"
     if (-not (Test-Path $configPath)) {
@@ -456,44 +511,34 @@ function Start-ZaloInstance {
         [System.IO.File]::WriteAllText($configPath, $configContent, $utf8NoBom)
     }
 
-    # Ghi nhận PID Zalo hiện có TRƯỚC khi mở
-    $existingPids = @()
-    $existingProcs = Get-Process -Name "Zalo" -ErrorAction SilentlyContinue
-    if ($existingProcs) { $existingPids = @($existingProcs | ForEach-Object { $_.Id }) }
-
-    # Launch Zalo với env vars riêng
     $processInfo = New-Object System.Diagnostics.ProcessStartInfo
     $processInfo.FileName = $Global:ZaloPath
     $processInfo.UseShellExecute = $false
     $processInfo.EnvironmentVariables["USERPROFILE"] = $profilePath
     $processInfo.EnvironmentVariables["APPDATA"] = $roamingPath
     $processInfo.EnvironmentVariables["LOCALAPPDATA"] = $localPath
-
+    
     try {
-        $proc = [System.Diagnostics.Process]::Start($processInfo)
-    } catch {
-        [System.Windows.MessageBox]::Show("Không thể khởi chạy Zalo: $($_.Exception.Message)", "Lỗi", 0, 16)
-        return
-    }
+        # Ghi nhan PID Zalo hien co TRUOC khi mo
+        $existingPids = @()
+        $existingProcs = Get-Process -Name "Zalo" -ErrorAction SilentlyContinue
+        if ($existingProcs) { $existingPids = @($existingProcs | ForEach-Object { $_.Id }) }
 
-    # Timer nhẹ: chờ 4 giây rồi track PID mới (KHÔNG block UI)
-    $pidTimer = New-Object System.Windows.Threading.DispatcherTimer
-    $pidTimer.Interval = [TimeSpan]::FromSeconds(4)
-    $pidTimer.Tag = @{ Profile = $profilePath; OldPids = $existingPids; InitPid = $proc.Id }
-    $pidTimer.Add_Tick({
-        $this.Stop()
-        $info = $this.Tag
-        try {
-            $allProcs = Get-Process -Name "Zalo" -ErrorAction SilentlyContinue
-            $newPids = @()
-            if ($allProcs) { $newPids = @($allProcs | Where-Object { $_.Id -notin $info.OldPids } | ForEach-Object { $_.Id }) }
-            $pidPath = Join-Path $info.Profile "pid.txt"
-            if ($newPids.Count -gt 0) { ($newPids -join ",") | Set-Content $pidPath -Force -Encoding ASCII }
-            else { $info.InitPid | Set-Content $pidPath -Force -Encoding ASCII }
-        } catch { }
-        Update-AppUIList
-    })
-    $pidTimer.Start()
+        $proc = [System.Diagnostics.Process]::Start($processInfo)
+        # Lưu PID để theo dõi trạng thái
+        if ($proc) {
+            # Cho Electron spawn child processes (3 giay)
+                Start-Sleep -Milliseconds 3000
+                $allProcs = Get-Process -Name "Zalo" -ErrorAction SilentlyContinue
+                $newPids = @()
+                if ($allProcs) { $newPids = @($allProcs | Where-Object { $_.Id -notin $existingPids } | ForEach-Object { $_.Id }) }
+                $pidPath = Join-Path $profilePath "pid.txt"
+                if ($newPids.Count -gt 0) { ($newPids -join ",") | Set-Content $pidPath -Force -Encoding ASCII }
+                else { $proc.Id | Set-Content $pidPath -Force -Encoding ASCII }
+        }
+    } catch {
+        [void][System.Windows.MessageBox]::Show("Không thể khởi chạy Zalo: $($_.Exception.Message)", "Lỗi", 0, 16)
+    }
 }
 
 # Kiểm tra trạng thái tài khoản (đang mở hay đã đóng)
@@ -518,23 +563,56 @@ function Get-AccountStatus {
 
 # --- CƠ CHẾ CẬP NHẬT TỰ ĐỘNG (ZIP-based) ---
 function Update-AppSilently {
-    $repoUrl = "https://github.com/nct88/ZaloMulti-Windows/releases/latest/download/ZaloMulti_Setup.exe"
-    $tempSetup = Join-Path $env:TEMP "ZaloMulti_Setup.exe"
+    $repoBase = "https://raw.githubusercontent.com/nct88/ZaloMulti-Win/main"
+    $tempZip = Join-Path $env:TEMP "ZaloMulti_update.zip"
+    $tempExtract = Join-Path $env:TEMP "ZaloMulti_update"
     
     try {
-        [System.Windows.MessageBox]::Show("Đang tải bản cập nhật... Vui lòng chờ trong giây lát.", "Cập nhật", 0, 64)
         $wc = New-Object System.Net.WebClient
-        $wc.DownloadFile($repoUrl, $tempSetup)
         
-        if (Test-Path $tempSetup) {
-            Start-Process -FilePath $tempSetup
+        # Thử tải file ZIP trước (cập nhật toàn diện)
+        $zipUrl = "$repoBase/update.zip"
+        $useZip = $true
+        try { $wc.DownloadFile($zipUrl, $tempZip) } catch { $useZip = $false }
+        
+        if ($useZip -and (Test-Path $tempZip) -and (Get-Item $tempZip).Length -gt 5000) {
+            # Giải nén vào thư mục tạm
+            if (Test-Path $tempExtract) { Remove-Item $tempExtract -Recurse -Force }
+            Expand-Archive -Path $tempZip -DestinationPath $tempExtract -Force
+            
+            # Tạo file .bat để copy đè và khởi động lại
+            $currentScript = Join-Path $Global:AppPath "ZaloMulti.ps1"
+            $updateBat = Join-Path $env:TEMP "update_zalo_multi.bat"
+            $destPath = $Global:AppPath
+            $batContent = "@echo off`ntitle Dang cap nhat ZaloMulti...`ntimeout /t 1 /nobreak > nul`nxcopy /s /y /q `"$tempExtract\*`" `"$destPath\`"`nstart `"`" powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$currentScript`"`nrmdir /s /q `"$tempExtract`"`ndel `"$tempZip`"`ndel `"%~f0`""
+            $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+            [System.IO.File]::WriteAllText($updateBat, $batContent, $utf8NoBom)
+            Start-Process $updateBat -WindowStyle Hidden
             $Global:window.Close()
             exit
         } else {
-            [System.Windows.MessageBox]::Show("Tải bản cập nhật thất bại.", "Lỗi cập nhật", 0, 16)
+            # Fallback: Cập nhật chỉ file .ps1 (tương thích ngược)
+            $remoteScriptUrl = "$repoBase/ZaloMulti.ps1"
+            $tempFile = Join-Path $env:TEMP "ZaloMulti_new.ps1"
+            $wc.DownloadFile($remoteScriptUrl, $tempFile)
+            
+            $tempContent = Get-Content $tempFile -Raw -Encoding UTF8
+            if ($tempContent.Length -lt 10000 -or $tempContent -notmatch "ZALỎMULTI") {
+                [void][System.Windows.MessageBox]::Show("Bản tải xuống bị lỗi. Quá trình cập nhật đã bị hủy.", "Lỗi cập nhật", 0, 16)
+                return
+            }
+            
+            $currentScript = Join-Path $Global:AppPath "ZaloMulti.ps1"
+            $updateBat = Join-Path $env:TEMP "update_zalo_multi.bat"
+            $batContent = "@echo off`ntitle Dang cap nhat ZaloMulti...`ntimeout /t 1 /nobreak > nul`nmove /y `"$tempFile`" `"$currentScript`"`nstart `"`" powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$currentScript`"`ndel `"%~f0`""
+            $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+            [System.IO.File]::WriteAllText($updateBat, $batContent, $utf8NoBom)
+            Start-Process $updateBat -WindowStyle Hidden
+            $Global:window.Close()
+            exit
         }
     } catch {
-        [System.Windows.MessageBox]::Show("Lỗi khi tải bản cập nhật: $($_.Exception.Message)", "Lỗi", 0, 16)
+        [void][System.Windows.MessageBox]::Show("Lỗi khi tải bản cập nhật: $($_.Exception.Message)")
     }
 }
 
@@ -652,8 +730,8 @@ function Update-AppUIList {
         [System.Windows.Controls.Grid]::SetColumn($scBtn, 1)
         
         $delBorder = New-Object System.Windows.Controls.Border
-        $delBorder.Background = [System.Windows.Media.Brushes]::Transparent; $delBorder.CornerRadius = 8
-        $delBorder.Width = 26; $delBorder.Height = 26; $delBorder.Cursor = [Windows.Input.Cursors]::Hand
+        $delBorder.Background = [System.Windows.Media.Brushes]::White; $delBorder.CornerRadius = 8
+        $delBorder.Width = 24; $delBorder.Height = 24; $delBorder.Cursor = [Windows.Input.Cursors]::Hand
         $delBorder.HorizontalAlignment = "Center"; $delBorder.VerticalAlignment = "Center"
         [System.Windows.Controls.Grid]::SetColumn($delBorder, 2)
         
@@ -694,7 +772,7 @@ function Update-AppUIList {
                     if (Test-Path $oldBat) { Remove-Item $oldBat -Force -ErrorAction SilentlyContinue }
                     if (Test-Path $oldLnk) { Remove-Item $oldLnk -Force -ErrorAction SilentlyContinue }
                     Update-AppUIList
-                } catch { [System.Windows.MessageBox]::Show("Lỗi: $($_.Exception.Message)") }
+                } catch { [void][System.Windows.MessageBox]::Show("Lỗi: $($_.Exception.Message)") }
             }
         })
 
@@ -737,18 +815,8 @@ function Update-AppUIList {
         $phoneBox.FontSize = 11; $phoneBox.Tag = $profileDir; $phoneBox.VerticalAlignment = "Center"
         $phoneBox.SetResourceReference([System.Windows.Controls.TextBox]::ForegroundProperty, "TextSec")
         [System.Windows.Controls.Grid]::SetColumn($phoneBox, 1)
-        $phoneBox.Add_GotFocus({
-            if ($this.Text -eq "Nhập số ĐT tài khoản này") {
-                $this.Text = ""
-                $this.CaretIndex = 0
-            }
-        })
         $phoneBox.Add_LostFocus({
-            if ([string]::IsNullOrWhiteSpace($this.Text)) {
-                $this.Text = "Nhập số ĐT tài khoản này"
-            } else {
-                $this.Text.Trim() | Set-Content (Join-Path $this.Tag "phone.txt") -Force -Encoding UTF8
-            }
+            $this.Text.Trim() | Set-Content (Join-Path $this.Tag "phone.txt") -Force -Encoding UTF8
         })
         $grid.Children.Add($phonePrefix); $grid.Children.Add($phoneBox)
 
@@ -772,8 +840,8 @@ function Update-AppUIList {
         $statusPanel.Children.Add($statusDot); $statusPanel.Children.Add($statusLabel)
 
         $launchBtn = New-Object System.Windows.Controls.Button
-        $launchBtn.Content = "▶  MỞ TÀI KHOẢN"; $launchBtn.Style = $Global:window.Resources["AccentBtn"]
-        $launchBtn.Tag = $name; $launchBtn.Width = 270; $launchBtn.Height = 38; $launchBtn.FontSize = 13
+        $launchBtn.Content = "MỞ TÀI KHOẢN"; $launchBtn.Style = $Global:window.Resources["RoundBtn"]
+        $launchBtn.Tag = $name; $launchBtn.Width = 270
         $launchBtn.Add_Click({
             $btn = $this
             $originalText = $btn.Content
@@ -823,6 +891,7 @@ $Global:BtnLight.Add_Click({ Set-AppTheme "Light" })
 $Global:BtnDark.Add_Click({ Set-AppTheme "Dark" })
 
 
+
 $Global:window.FindName("BtnFB").Add_Click({ Start-Process "https://fb.me/congtruongit" | Out-Null })
 $Global:window.FindName("BtnTG").Add_Click({ Start-Process "https://t.me/congtruongit" | Out-Null })
 $Global:window.FindName("BtnGH").Add_Click({ Start-Process "https://github.com/nct88/ZaloMulti-Win" | Out-Null })
@@ -838,7 +907,7 @@ $Global:BtnToTop.Add_Click({ $Global:MainScroll.ScrollToTop() })
 $Global:BtnAdd.Add_Click({
     $profiles = Get-ChildItem $Global:ProfileRoot -ErrorAction SilentlyContinue | Where-Object { $_.PSIsContainer }
     if ($profiles -and $profiles.Count -ge 2) {
-        [System.Windows.MessageBox]::Show("Phiên bản hiện tại chỉ hỗ trợ tối đa 2 tài khoản!", "Giới hạn tài khoản", 0, 48)
+        [void][System.Windows.MessageBox]::Show("Phiên bản hiện tại chỉ hỗ trợ tối đa 2 tài khoản!", "Giới hạn tài khoản", 0, 48)
         return
     }
 
@@ -850,40 +919,13 @@ $Global:BtnAdd.Add_Click({
     if ($name) {
         $path = Join-Path $Global:ProfileRoot $name
         if (-not (Test-Path $path)) { New-Item -ItemType Directory -Path $path -Force | Out-Null; Update-AppUIList }
-        else { [System.Windows.MessageBox]::Show("Tên tài khoản đã tồn tại!") }
+        else { [void][System.Windows.MessageBox]::Show("Tên tài khoản đã tồn tại!") }
     }
 })
 
 $Global:BtnKillAll.Add_Click({
-    # Chỉ đóng các Zalo clone (có PID trong profile), giữ lại Zalo gốc
-    $killedCount = 0
-    $profiles = Get-ChildItem $Global:ProfileRoot -ErrorAction SilentlyContinue | Where-Object { $_.PSIsContainer }
-    foreach ($p in $profiles) {
-        $pidFile = Join-Path $p.FullName "pid.txt"
-        if (Test-Path $pidFile) {
-            $savedPid = (Get-Content $pidFile -Raw -ErrorAction SilentlyContinue).Trim()
-            if ($savedPid) {
-                foreach ($onePid in ($savedPid -split ",")) {
-                    $onePid = $onePid.Trim()
-                    if ($onePid -match "^\d+$") {
-                        try {
-                            $proc = Get-Process -Id ([int]$onePid) -ErrorAction SilentlyContinue
-                            if ($proc) {
-                                Stop-Process -Id ([int]$onePid) -Force -ErrorAction SilentlyContinue
-                                $killedCount++
-                            }
-                        } catch { }
-                    }
-                }
-            }
-        }
-    }
-    if ($killedCount -gt 0) {
-        Update-AppUIList
-        [System.Windows.MessageBox]::Show("Đã đóng $killedCount phiên Zalo clone.`nZalo gốc không bị ảnh hưởng.")
-    } else {
-        [System.Windows.MessageBox]::Show("Không có phiên Zalo clone nào đang mở.")
-    }
+    Get-Process Zalo -ErrorAction SilentlyContinue | Stop-Process -Force
+    [void][System.Windows.MessageBox]::Show("Đã đóng tất cả các phiên làm việc.")
 })
 
 $Global:BtnClose.Add_Click({ $Global:window.Close() })
@@ -943,56 +985,6 @@ $Global:RefreshTimer = New-Object System.Windows.Threading.DispatcherTimer
 $Global:RefreshTimer.Interval = [TimeSpan]::FromSeconds(5)
 $Global:RefreshTimer.Add_Tick({ Refresh-StatusOnly })
 $Global:RefreshTimer.Start()
-
-# --- KIỂM TRA DONATE TRƯỚC KHI MỞ TRANG ---
-$donateStatusFile = Join-Path $Global:AppPath "donate_status.json"
-$shouldShowDonate = $true
-
-# Lấy HWID máy hiện tại
-$donateHWID = "UNKNOWN"
-try {
-    $donateHWID = (Get-CimInstance Win32_ComputerSystemProduct -ErrorAction SilentlyContinue).UUID
-    if (-not $donateHWID) {
-        $donateHWID = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Cryptography" -Name "MachineGuid" -ErrorAction SilentlyContinue).MachineGuid
-    }
-} catch {}
-
-if ($donateHWID -and $donateHWID -ne "UNKNOWN") {
-    # Bước 1: Kiểm tra cache local trước (tránh call API mỗi lần mở app)
-    if (Test-Path $donateStatusFile) {
-        try {
-            $donateCache = Get-Content $donateStatusFile -Raw -Encoding UTF8 | ConvertFrom-Json
-            if ($donateCache.hwid -eq $donateHWID -and $donateCache.donated -eq $true) {
-                $shouldShowDonate = $false
-            }
-        } catch {}
-    }
-
-    # Bước 2: Nếu chưa có cache → kiểm tra API (chạy ngầm, không chặn UI)
-    if ($shouldShowDonate) {
-        try {
-            [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
-            $checkUrl = "https://donate-api.truong-it.workers.dev/hwid/check?id=$donateHWID"
-            $apiResponse = Invoke-RestMethod -Uri $checkUrl -Method Get -TimeoutSec 5 -ErrorAction SilentlyContinue
-            if ($apiResponse -and $apiResponse.donated -eq $true) {
-                $shouldShowDonate = $false
-                # Cache kết quả để lần sau không cần gọi API
-                $cacheData = @{ hwid = $donateHWID; donated = $true; checked_at = (Get-Date -Format "yyyy-MM-ddTHH:mm:ss") }
-                $utf8NoBom = New-Object System.Text.UTF8Encoding $false
-                [System.IO.File]::WriteAllText($donateStatusFile, ($cacheData | ConvertTo-Json -Compress), $utf8NoBom)
-            }
-        } catch {
-            # API lỗi → vẫn hiện donate (an toàn)
-        }
-    }
-
-    if ($shouldShowDonate) {
-        Start-Process "https://d.truong.it/donate?hwid=$donateHWID" -ErrorAction SilentlyContinue | Out-Null
-    }
-} else {
-    # Không lấy được HWID → mở donate bình thường
-    Start-Process "https://d.truong.it/donate" -ErrorAction SilentlyContinue | Out-Null
-}
 
 $Global:window.ShowDialog() | Out-Null
 $Global:RefreshTimer.Stop()

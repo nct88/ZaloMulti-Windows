@@ -24,9 +24,12 @@ trap {
     exit 1
 }
 
-# Cấu hình toàn cầu
-$Global:Version = "2.0.6" # Cập nhật giao diện, sửa lỗi khởi động, thêm bảo vệ nguồn
+# Cấu hình toàn cục
+$Global:Version = "2.1.1" # Cập nhật giao diện, sửa lỗi khởi động, thêm bảo vệ nguồn
 $Global:AppPath = $PSScriptRoot
+if (-not $Global:AppPath) {
+    $Global:AppPath = [System.IO.Path]::GetDirectoryName([System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName)
+}
 $Global:IconFolder = Join-Path $Global:AppPath "Assets"
 
 # Fix lỗi load font do đường dẫn chứa khoảng trắng (nguyên nhân gây crash XAML)

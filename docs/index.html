@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZalỏMulti v2.0.9 — Quản lý đa tài khoản Zalo Desktop</title>
+    <meta name="description"
+        content="Công cụ miễn phí, mã nguồn mở giúp chạy đồng thời nhiều tài khoản Zalo Desktop trên Windows. Giao diện đẹp, cập nhật tự động, an toàn tuyệt đối.">
+    <meta name="keywords" content="Zalo, multi account, đa tài khoản, ZaloMulti, Windows, mã nguồn mở">
+    <meta name="author" content="truong.it">
+    <meta property="og:title" content="ZalỏMulti — Quản lý đa tài khoản Zalo Desktop">
+    <meta property="og:description"
+        content="Chạy đồng thời nhiều tài khoản Zalo Desktop trên Windows. Miễn phí & mã nguồn mở.">
+    <meta property="og:image" content="https://raw.githubusercontent.com/nct88/ZaloMulti-Win/main/Assets/zalo.png">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/nct88/ZaloMulti-Win/main/Assets/zalo.png">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <!-- Animated background -->
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+
+    <!-- Navigation -->
+    <nav id="navbar">
+        <div class="nav-inner">
+            <a href="#" class="logo">
+                <img src="https://raw.githubusercontent.com/nct88/ZaloMulti-Win/main/Assets/zalo.png"
+                    alt="ZalỏMulti Logo">
+                <span>ZalỏMulti</span>
+            </a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="#features">Tính năng</a></li>
+                <li><a href="#changelog">Cập nhật</a></li>
+                <li><a href="#install">Cài đặt</a></li>
+                <li><a href="#faq">FAQ</a></li>
+                <li><a href="https://truong.it" target="_blank" rel="noopener"><i class="fas fa-globe" style="margin-right: 4px;"></i>Portfolio</a></li>
+                <li><a href="https://d.truong.it/donate" target="_blank"
+                        style="color: var(--primary); font-weight: 600;"><i class="fas fa-coffee"
+                            style="margin-right: 5px;"></i>Donate</a></li>
+            </ul>
+            <div class="nav-actions">
+                <a href="https://github.com/nct88/ZaloMulti-Win" class="btn-nav" target="_blank" rel="noopener">
+                    <i class="fab fa-github"></i> GitHub
+                </a>
+                <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+                    <span></span><span></span><span></span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-grid">
+                <div class="hero-content">
+                    <div class="version-pill">
+                        <span class="pulse-dot"></span>
+                        v2.0.9 — Cập nhật mới nhất
+                    </div>
+                    <h1>Quản lý nhiều nick Zalo<br><span class="gradient-text">Cực kỳ dễ dàng.</span></h1>
+                    <p class="hero-desc">Sử dụng đồng thời không giới hạn tài khoản Zalo biệt lập trên Windows. Dữ liệu
+                        an toàn, mã nguồn mở, hoàn toàn miễn phí.</p>
+                    <div class="hero-stats">
+                        <div class="stat">
+                            <span class="stat-number" id="statAccounts">∞</span>
+                            <span class="stat-label">Tài khoản</span>
+                        </div>
+                        <div class="stat-divider"></div>
+                        <div class="stat">
+                            <span class="stat-number">0₫</span>
+                            <span class="stat-label">Chi phí</span>
+                        </div>
+                        <div class="stat-divider"></div>
+                        <div class="stat">
+                            <span class="stat-number">100%</span>
+                            <span class="stat-label">Mã nguồn mở</span>
+                        </div>
+                    </div>
+                    <div class="cta-group">
+                        <a href="https://github.com/nct88/ZaloMulti-Win/archive/refs/heads/main.zip" class="btn-primary"
+                            id="downloadBtn">
+                            <i class="fas fa-download"></i> Tải về miễn phí
+                        </a>
+                        <a href="https://github.com/nct88/ZaloMulti-Win" class="btn-outline" target="_blank"
+                            rel="noopener">
+                            <i class="fab fa-github"></i> Xem mã nguồn
+                        </a>
+                    </div>
+                </div>
+                <div class="hero-visual">
+                    <div class="app-preview">
+                        <div class="preview-titlebar">
+                            <div class="titlebar-dots">
+                                <span class="dot dot-red"></span>
+                                <span class="dot dot-yellow"></span>
+                                <span class="dot dot-green"></span>
+                            </div>
+                            <span class="titlebar-text">ZalỏMulti</span>
+                        </div>
+                        <div class="preview-body">
+                            <div class="mini-card active">
+                                <div class="mini-card-header">
+                                    <img src="https://raw.githubusercontent.com/nct88/ZaloMulti-Win/main/Assets/zalo_01_Do.ico"
+                                        alt="" class="mini-icon">
+                                    <div>
+                                        <div class="mini-name">TÀI KHOẢN 1</div>
+                                        <div class="mini-status online"><span class="status-dot"></span> Đang hoạt động
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mini-card">
+                                <div class="mini-card-header">
+                                    <img src="https://raw.githubusercontent.com/nct88/ZaloMulti-Win/main/Assets/zalo_02_XanhLa.ico"
+                                        alt="" class="mini-icon">
+                                    <div>
+                                        <div class="mini-name">TÀI KHOẢN 2</div>
+                                        <div class="mini-status offline"><span class="status-dot"></span> Chưa mở</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mini-card">
+                                <div class="mini-card-header">
+                                    <img src="https://raw.githubusercontent.com/nct88/ZaloMulti-Win/main/Assets/zalo_05_Tim.ico"
+                                        alt="" class="mini-icon">
+                                    <div>
+                                        <div class="mini-name">TÀI KHOẢN 3</div>
+                                        <div class="mini-status online"><span class="status-dot"></span> Đang hoạt động
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="preview-footer">Phiên bản 2.0.9 • 2/3 đang mở</div>
+                    </div>
+                    <div class="icons-float">
+                        <img src="https://raw.githubusercontent.com/nct88/ZaloMulti-Win/main/Assets/zalo_03_Cam.ico"
+                            alt="" class="float-icon fi-1">
+                        <img src="https://raw.githubusercontent.com/nct88/ZaloMulti-Win/main/Assets/zalo_04_Vang.ico"
+                            alt="" class="float-icon fi-2">
+                        <img src="https://raw.githubusercontent.com/nct88/ZaloMulti-Win/main/Assets/zalo_07_XanhDuongDam.ico"
+                            alt="" class="float-icon fi-3">
+                        <img src="https://raw.githubusercontent.com/nct88/ZaloMulti-Win/main/Assets/zalo_08_XanhNgoc.ico"
+                            alt="" class="float-icon fi-4">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">Tính năng</span>
+                <h2>Tại sao chọn ZalỏMulti?</h2>
+                <p>Công cụ được thiết kế tập trung vào trải nghiệm người dùng, đơn giản nhưng mạnh mẽ.</p>
+            </div>
+            <div class="feature-grid">
+                <div class="feature-card" data-aos>
+                    <div class="feature-icon"><i class="fas fa-users"></i></div>
+                    <h3>Không giới hạn tài khoản</h3>
+                    <p>Chạy bao nhiêu nick Zalo tùy ý trên cùng một máy tính. Mỗi tài khoản hoàn toàn biệt lập.</p>
+                </div>
+                <div class="feature-card" data-aos>
+                    <div class="feature-icon"><i class="fas fa-shield-halved"></i></div>
+                    <h3>An toàn & Bảo mật</h3>
+                    <p>Dữ liệu mỗi nick được cách ly hoàn toàn. Không sửa đổi Zalo gốc, không lo bị phát hiện.</p>
+                </div>
+                <div class="feature-card" data-aos>
+                    <div class="feature-icon"><i class="fas fa-rotate"></i></div>
+                    <h3>Cập nhật tự động</h3>
+                    <p>Hệ thống tự phát hiện phiên bản mới và cập nhật toàn diện chỉ với 1 click chuột.</p>
+                </div>
+                <div class="feature-card" data-aos>
+                    <div class="feature-icon"><i class="fas fa-circle-check"></i></div>
+                    <h3>Trạng thái thời gian thực</h3>
+                    <p>Hiện 🟢/⚫ cho biết tài khoản nào đang mở, tự làm mới mỗi 5 giây.</p>
+                </div>
+                <div class="feature-card" data-aos>
+                    <div class="feature-icon"><i class="fas fa-desktop"></i></div>
+                    <h3>Shortcut Desktop</h3>
+                    <p>Tạo lối tắt ngoài Desktop cho từng tài khoản. Nhấn đúp là mở, không cần mở app chính.</p>
+                </div>
+                <div class="feature-card" data-aos>
+                    <div class="feature-icon"><i class="fas fa-code-branch"></i></div>
+                    <h3>Mã nguồn mở</h3>
+                    <p>100% minh bạch trên GitHub. Bất kỳ ai cũng có thể đọc, kiểm tra và đóng góp.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Changelog Section -->
+    <section class="changelog" id="changelog">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">Lịch sử</span>
+                <h2>Hành trình phát triển</h2>
+                <p>Mỗi bản cập nhật đều hướng đến trải nghiệm tốt hơn cho người dùng.</p>
+            </div>
+            <div class="timeline">
+                <div class="timeline-item current">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                        <div class="timeline-version">v2.0.9 <span class="tag-latest">Mới nhất</span></div>
+                        <div class="timeline-date">03/05/2026</div>
+                        <ul>
+                            <li>Sửa lỗi PID tracking gây sai trạng thái tài khoản</li>
+                            <li>Dọn dẹp mã nguồn, loại bỏ dead code</li>
+                            <li>Viết lại README hướng dẫn chi tiết cho người mới</li>
+                            <li>Đóng gói EXE mới phiên bản 2.0.9</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                        <div class="timeline-version">v2.0.7</div>
+                        <div class="timeline-date">01/05/2026</div>
+                        <ul>
+                            <li>Làm mới giao diện macOS Style</li>
+                            <li>Tối ưu hệ thống Auto-Update bằng Runspace bất đồng bộ</li>
+                            <li>Theo dõi trạng thái chính xác cho nhiều PID Zalo Electron</li>
+                            <li>Biên dịch định dạng EXE</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                        <div class="timeline-version">v2.0.2</div>
+                        <div class="timeline-date">28/04/2026</div>
+                        <ul>
+                            <li>Khởi chạy từ Shortcut cực nhanh (không load giao diện)</li>
+                            <li>Sửa lỗi con trỏ chuột xoay xoay nhấp nháy</li>
+                            <li>Tối ưu hiệu suất: Script thoát ngay sau khi mở Zalo</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                        <div class="timeline-version">v2.0.1</div>
+                        <div class="timeline-date">28/04/2026</div>
+                        <ul>
+                            <li>Sửa lỗi Shortcut tiếng Việt (Unable to save shortcut)</li>
+                            <li>File Shortcut dùng tên không dấu — tương thích mọi Windows locale</li>
+                            <li>Tự động sửa file .bat cũ thiếu encoding UTF-8</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                        <div class="timeline-version">v2.0.0</div>
+                        <div class="timeline-date">28/04/2026</div>
+                        <ul>
+                            <li>Tự động làm mới trạng thái 🟢/⚫ mỗi 5 giây</li>
+                            <li>Hiện số tài khoản đang mở trên thanh phiên bản</li>
+                            <li>Xóa tài khoản thông minh — chỉ đóng đúng phiên Zalo đó</li>
+                            <li>Loại bỏ tool thừa, tối ưu mã nguồn</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                        <div class="timeline-version">v1.1.0</div>
+                        <div class="timeline-date">28/04/2026</div>
+                        <ul>
+                            <li>Badge trạng thái tài khoản (🟢 Đang mở / ⚫ Đã đóng)</li>
+                            <li>Cập nhật toàn diện bằng ZIP (thay vì chỉ 1 file)</li>
+                            <li>Hiện Changelog trong hộp thoại cập nhật</li>
+                            <li>Đồng bộ Shortcut khi đổi tên / xóa tài khoản</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                        <div class="timeline-version">v1.0.3</div>
+                        <div class="timeline-date">28/04/2026</div>
+                        <ul>
+                            <li>Sửa lỗi Shortcut Desktop không mở được Zalo</li>
+                            <li>Tự dọn dẹp Shortcut cũ bị lỗi</li>
+                            <li>Hiệu ứng Hover + Loading khi mở Zalo</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                        <div class="timeline-version">v1.0.2</div>
+                        <div class="timeline-date">28/04/2026</div>
+                        <ul>
+                            <li>Sửa lỗi encoding Shortcut tiếng Việt</li>
+                            <li>Cơ chế so sánh version chính xác hơn</li>
+                            <li>Kiểm tra tính toàn vẹn file khi cập nhật</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                        <div class="timeline-version">v1.0.1</div>
+                        <div class="timeline-date">27/04/2026</div>
+                        <ul>
+                            <li>Cập nhật tự động từ GitHub</li>
+                            <li>Giao diện Dark/Light mode</li>
+                            <li>Bảng màu 9 tông Pastel</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Install Section -->
+    <section class="install" id="install">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">Bắt đầu</span>
+                <h2>Cài đặt trong 30 giây</h2>
+                <p>Không cần cài đặt phức tạp, chỉ cần tải về, giải nén và chạy.</p>
+            </div>
+            <div class="steps-grid">
+                <div class="step-card">
+                    <div class="step-number">01</div>
+                    <h3>Tải về</h3>
+                    <p>Nhấn nút "Tải về miễn phí" hoặc vào GitHub Releases để tải file ZIP mới nhất.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-number">02</div>
+                    <h3>Giải nén</h3>
+                    <p>Giải nén file ZIP vào một thư mục bất kỳ trên máy tính của bạn.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-number">03</div>
+                    <h3>Khởi chạy</h3>
+                    <p>Nhấn đúp vào file <strong>ZaloMulti.exe</strong> để mở ứng dụng.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-number">04</div>
+                    <h3>Sử dụng</h3>
+                    <p>Thêm tài khoản mới, nhấn "MỞ TÀI KHOẢN" và đăng nhập Zalo.</p>
+                </div>
+            </div>
+            <div class="install-cta">
+                <a href="https://github.com/nct88/ZaloMulti-Win/archive/refs/heads/main.zip"
+                    class="btn-primary btn-large">
+                    <i class="fas fa-download"></i> Tải về ngay — Miễn phí
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="faq" id="faq">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">Hỏi đáp</span>
+                <h2>Câu hỏi thường gặp</h2>
+            </div>
+            <div class="faq-list">
+                <div class="faq-item">
+                    <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                        Có bị khóa tài khoản Zalo không?
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Không. ZalỏMulti sử dụng cơ chế tạo profile riêng biệt (Environment Variable Redirection) —
+                            cách tương tự như mở nhiều tab trình duyệt. Không sửa đổi, can thiệp hay crack Zalo gốc.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                        Dữ liệu tin nhắn lưu ở đâu?
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Mỗi tài khoản có một thư mục riêng trong <code>C:\Zalo_Clone_Profiles</code>. Bạn có thể thay
+                            đổi đường dẫn này trong mục Cài đặt của ứng dụng.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                        Cần cài Zalo Desktop trước không?
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Có. Bạn cần cài sẵn Zalo Desktop chính thức. ZalỏMulti sẽ sử dụng bản Zalo đã cài để mở nhiều
+                            phiên đăng nhập.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                        Hỗ trợ Windows nào?
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Windows 10 và Windows 11 (64-bit). Cần PowerShell 5.1 trở lên (đã có sẵn trên Windows).</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                        Cơ chế đăng nhập nhiều tài khoản hoạt động như thế nào?
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <p>ZalỏMulti sử dụng kỹ thuật <strong>Điều hướng biến môi trường (Environment Variables
+                                Redirection)</strong>. Mỗi tài khoản được tạo một thư mục riêng, sau đó khi mở Zalo, ứng
+                            dụng sẽ trỏ các biến <code>USERPROFILE</code>, <code>APPDATA</code>,
+                            <code>LOCALAPPDATA</code> vào thư mục đó. Zalo nghĩ rằng nó đang chạy trên một người dùng
+                            Windows mới — hoàn toàn độc lập, không can thiệp vào mã nguồn hay crack Zalo gốc.
+                        </p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                        Zalo đồng bộ tin nhắn bị lỗi / thất bại khi dùng Clone?
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Đây là hành vi bình thường của Zalo. Khi đăng nhập trên profile Clone lần đầu, Zalo coi đó là
+                            thiết bị mới nên cần thời gian đồng bộ lại. <strong>Hãy đợi 5–10 phút</strong> sau khi đăng
+                            nhập, không tắt Zalo giữa chừng. Nếu vẫn thất bại, hãy đăng xuất rồi đăng nhập lại.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                        Mở Clone xong không gõ được tiếng Việt (Unikey bị lỗi)?
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Đây là xung đột giữa <strong>Zalo (Electron)</strong> và <strong>Unikey</strong>, không phải
+                            lỗi của ZalỏMulti. Khi Zalo clone khởi chạy, Electron đăng ký keyboard hook mới có thể xung
+                            đột với Unikey. <strong>Cách khắc phục</strong>: Nhấn chuột phải vào icon Unikey ở khay hệ
+                            thống → chọn <em>Khởi động lại</em>, hoặc tắt Unikey rồi mở lại. Bạn cũng có thể thử chuyển
+                            sang <strong>EVKey</strong> (tương thích tốt hơn với Electron).</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <div class="footer-logo">
+                        <img src="https://raw.githubusercontent.com/nct88/ZaloMulti-Win/main/Assets/zalo.png" alt=""
+                            width="28">
+                        <span>ZalỏMulti</span>
+                    </div>
+                    <p>Công cụ quản lý đa tài khoản Zalo Desktop. Miễn phí & mã nguồn mở.</p>
+                </div>
+                <div class="footer-links">
+                    <h4>Liên kết</h4>
+                    <a href="https://github.com/nct88/ZaloMulti-Win" target="_blank" rel="noopener"><i
+                            class="fab fa-github"></i> GitHub</a>
+                    <a href="https://fb.me/congtruongit" target="_blank" rel="noopener"><i class="fab fa-facebook"></i>
+                        Facebook</a>
+                    <a href="https://t.me/congtruongit" target="_blank" rel="noopener"><i class="fab fa-telegram"></i>
+                        Telegram</a>
+                    <a href="https://truong.it" target="_blank" rel="noopener"><i class="fas fa-globe"></i>
+                        truong.it</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>© 2026 <a href="https://truong.it">truong.it</a> — Made with ❤️ for the community.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

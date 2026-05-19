@@ -571,7 +571,7 @@ function Start-ZaloInstance {
         }
     } catch {
         [System.Windows.Input.Mouse]::OverrideCursor = $null
-        Write-AppLog "Lỗi khi khởi chạy $name: $($_.Exception.Message)"
+        Write-AppLog "Lỗi khi khởi chạy ${name}: $($_.Exception.Message)"
         [void][System.Windows.MessageBox]::Show("Không thể khởi chạy Zalo: $($_.Exception.Message)", "Lỗi", 0, 16)
     }
 }
@@ -966,7 +966,7 @@ $Global:BtnKillAll.Add_Click({
 })
 
 $Global:BtnClose.Add_Click({
-    Write-AppLog "Người dùng đóng ứng dụng ZaloMulti." $Global:window.Close() })
+    Write-AppLog "Người dùng đóng ứng dụng ZaloMulti."; $Global:window.Close() })
 $Global:window.FindName("BtnMin").Add_Click({ $Global:window.WindowState = 'Minimized' })
 $Global:window.FindName("BtnMax").Add_Click({ 
     if ($Global:window.WindowState -eq 'Maximized') { $Global:window.WindowState = 'Normal' }

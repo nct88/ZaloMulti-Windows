@@ -89,7 +89,7 @@ Mở thư mục vừa giải nén → **nhấn đúp vào file `ZaloMulti.exe`**
 
 | Tính năng | Mô tả |
 |-----------|-------|
-| 🔓 Không giới hạn tài khoản | Thêm bao nhiêu tài khoản tùy thích |
+| 🔓 Hỗ trợ 2 tài khoản | Mở song song 2 tài khoản Zalo cùng lúc |
 | 🔒 Dữ liệu độc lập | Mỗi tài khoản có dữ liệu riêng, không chồng chéo |
 | 🎨 Giao diện hiện đại | Dark/Light mode, thiết kế macOS-style |
 | 🔗 Shortcut Desktop | Mở thẳng từng tài khoản từ Desktop |

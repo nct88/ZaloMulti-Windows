@@ -861,8 +861,16 @@ $Global:MainScroll.Add_ScrollChanged({
 $Global:BtnToTop.Add_Click({ $Global:MainScroll.ScrollToTop() })
 
 $Global:BtnAdd.Add_Click({
+    $profiles = Get-ChildItem $Global:ProfileRoot -ErrorAction SilentlyContinue | Where-Object { $_.PSIsContainer }
+    if ($profiles -and $profiles.Count -ge 2) {
+        [System.Windows.MessageBox]::Show("Phiên bản hiện tại chỉ hỗ trợ tối đa 2 tài khoản!", "Giới hạn tài khoản", 0, 48)
+        return
+    }
+
     Add-Type -AssemblyName Microsoft.VisualBasic
-    $defaultName = "Tài khoản $( (Get-ChildItem $Global:ProfileRoot | Where-Object { $_.PSIsContainer }).Count + 1 )"
+    $count = 0
+    if ($profiles) { $count = $profiles.Count }
+    $defaultName = "Tài khoản $( $count + 1 )"
     $name = [Microsoft.VisualBasic.Interaction]::InputBox("Nhập tên tài khoản:", "Thêm mới", $defaultName)
     if ($name) {
         $path = Join-Path $Global:ProfileRoot $name

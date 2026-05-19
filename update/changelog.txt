@@ -1,4 +1,0 @@
-- Sửa lỗi crash khi khởi động từ file EXE ($PSScriptRoot rỗng)
-- Thêm biểu tượng Zalo cho file EXE
-- Đồng bộ màu nút theo chế độ: Sáng = đỏ, Tối = xanh
-- Đóng gói EXE mới phiên bản 2.1.0

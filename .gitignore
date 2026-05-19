@@ -1,30 +1,38 @@
-# Bá» qua cÃ¡c tá»‡p khÃ´ng cáº§n thiáº¿t (ZaloMulti GitIgnore)
+# Bỏ qua các tệp không cần thiết (ZaloMulti GitIgnore)
 
-# DÃ¡Â»Â¯ liÃ¡Â»â€¡u cÃƒÂ¡ nhÃƒÂ¢n & cÃ¡ÂºÂ¥u hÃƒÂ¬nh riÃƒÂªng mÃƒÂ¡y
+# Dữ liệu cá nhân & cấu hình riêng máy
 settings.json
 custom_path.txt
 desktop_profiles.json
 profiles_config.json
 donate_status.json
 
-# ThÃ†Â° mÃ¡Â»Â¥c chÃ¡Â»Â©a file .bat sinh tÃ¡Â»Â± Ã„â€˜Ã¡Â»â„¢ng
+# Thư mục chứa file .bat sinh tự động
 Shortcuts/
 
-# Ghi chÃƒÂº nÃ¡Â»â„¢i bÃ¡Â»â„¢
+# Ghi chú nội bộ
 lessons_learned.md
 
-# Tá»‡p táº¡m cá»§a PowerShell
+# Tệp tạm của PowerShell
 *.log
 *.tmp
 
-# Cáº¥u hÃ¬nh trÃ¬nh chá»‰nh sá»­a code (IDE)
+# Cấu hình trình chỉnh sửa code (IDE)
 .vscode/
 .gemini/
+.idea/
 
-# Tá»‡p rÃ¡c cá»§a há»‡ Ä‘iá»u hÃ nh
+# Tệp rác của hệ điều hành
 Thumbs.db
 Desktop.ini
 
+# Build artifacts & bản phát hành cũ (đã chuyển sang GitHub Releases)
 *.exe
+update.zip
+update/
 
+# Tệp sao lưu (Backup)
+*.zlp
+
+# Thư mục tạm
 temp/

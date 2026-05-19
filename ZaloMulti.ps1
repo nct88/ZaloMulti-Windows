@@ -1,4 +1,4 @@
-﻿# ============================================================
+# ============================================================
 # ZALỎMULTI - PHIÊN BẢN HOÀN THIỆN
 # BẢN QUYỀN TRUONG.IT
 # ============================================================
@@ -227,8 +227,7 @@ if ($consolePtr -ne [IntPtr]::Zero) {
 
 # Ánh xạ UI
 $Global:BtnAdd = $Global:window.FindName("BtnAdd")
-$Global:BtnExport = $Global:window.FindName("BtnExport")
-$Global:BtnImport = $Global:window.FindName("BtnImport")
+
 $Global:BtnKillAll = $Global:window.FindName("BtnKillAll")
 $Global:InstanceGrid = $Global:window.FindName("InstanceGrid")
 $Global:BtnClose = $Global:window.FindName("BtnClose")
@@ -259,91 +258,6 @@ $Global:ImgTG.Source = Get-ZaloBitmap "telegram.png"
 $Global:ImgGH.Source = Get-ZaloBitmap "github.png"
 $Global:ImgWS.Source = Get-ZaloBitmap "website.png"
 
-# --- CHỨC NĂNG SAO LƯU ---
-function Export-ProfileUI {
-    $profiles = Get-ChildItem $Global:ProfileRoot -ErrorAction SilentlyContinue | Where-Object { $_.PSIsContainer }
-    if (-not $profiles -or $profiles.Count -eq 0) { [System.Windows.MessageBox]::Show("Không tìm thấy profile nào để sao lưu!", "Sao lưu", 0, 48); return }
-
-    $subWin = New-Object System.Windows.Window
-    $subWin.Title = "Chọn Profile Sao Lưu"
-    $subWin.Width = 320; $subWin.Height = 420
-    $subWin.WindowStartupLocation = "CenterOwner"
-    $subWin.Owner = $Global:window
-    $subWin.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#242526")
-
-    $sp = New-Object System.Windows.Controls.StackPanel
-    $sp.Margin = 15
-    $lbl = New-Object System.Windows.Controls.TextBlock
-    $lbl.Text = "Chọn tài khoản cần sao lưu:"; $lbl.Foreground = "White"; $lbl.FontSize = 14; $lbl.Margin = "0,0,0,10"
-    $sp.Children.Add($lbl)
-    $lb = New-Object System.Windows.Controls.ListBox
-    $lb.Height = 280; $lb.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#18191A")
-    $lb.Foreground = "White"; $lb.FontSize = 13
-    foreach ($p in $profiles) { $lb.Items.Add($p.Name) | Out-Null }
-    $sp.Children.Add($lb)
-
-    $btn = New-Object System.Windows.Controls.Button
-    $btn.Content = "📦 BẮT ĐẦU SAO LƯU"; $btn.Height = 38; $btn.Margin = "0,10,0,0"; $btn.FontSize = 13
-    $btn.Add_Click({ $subWin.DialogResult = $true; $subWin.Close() })
-    $sp.Children.Add($btn)
-
-    $subWin.Content = $sp
-    if ($subWin.ShowDialog() -and $lb.SelectedItem) {
-        $name = $lb.SelectedItem
-        $timestamp = Get-Date -Format "HHmmss-ddMMyy"
-        $fileNameFriendly = $name.ToLower().Replace(" ", "-")
-        
-        $save = New-Object Microsoft.Win32.SaveFileDialog
-        $save.Filter = "Zalo Profile Package (*.zlp)|*.zlp"
-        $save.FileName = "$fileNameFriendly-$timestamp.zlp"
-        
-        if ($save.ShowDialog()) {
-            try {
-                $sourcePath = Join-Path $Global:ProfileRoot $name
-                $destZip = $save.FileName
-                [System.Windows.MessageBox]::Show("Đang sao lưu... Vui lòng chờ.`nQuá trình này có thể mất vài phút tùy dung lượng.", "Sao lưu", 0, 64)
-                # Compress-Archive yêu cầu đuôi .zip → nén ra .zip tạm rồi đổi tên
-                $tempZipFile = [System.IO.Path]::ChangeExtension($destZip, ".zip")
-                if (Test-Path $tempZipFile) { Remove-Item $tempZipFile -Force }
-                Compress-Archive -Path "$sourcePath\*" -DestinationPath $tempZipFile -Force
-                if ($tempZipFile -ne $destZip) {
-                    if (Test-Path $destZip) { Remove-Item $destZip -Force }
-                    Move-Item -Path $tempZipFile -Destination $destZip -Force
-                }
-                [System.Windows.MessageBox]::Show("Sao lưu thành công!`n$destZip", "Hoàn tất", 0, 64)
-            } catch {
-                [System.Windows.MessageBox]::Show("Lỗi khi sao lưu:`n$($_.Exception.Message)", "Lỗi sao lưu", 0, 16)
-            }
-        }
-    }
-}
-
-# --- CHỨC NĂNG NHẬP ---
-function Import-ProfileUI {
-    $open = New-Object Microsoft.Win32.OpenFileDialog
-    $open.Filter = "Zalo Profile Package (*.zlp)|*.zlp"
-    $open.Title = "Chọn file sao lưu (.zlp) để khôi phục"
-    
-    if ($open.ShowDialog()) {
-        try {
-            Add-Type -AssemblyName Microsoft.VisualBasic
-            $defaultName = [System.IO.Path]::GetFileNameWithoutExtension($open.FileName).Replace("Backup_Zalo_", "")
-            $newName = [Microsoft.VisualBasic.Interaction]::InputBox("Nhập tên cho tài khoản mới:", "Khôi phục dữ liệu", $defaultName)
-            
-            if ($newName) {
-                $destPath = Join-Path $Global:ProfileRoot $newName
-                if (Test-Path $destPath) { [System.Windows.MessageBox]::Show("Tên '$newName' đã tồn tại! Vui lòng chọn tên khác.", "Trùng tên", 0, 48); return }
-                
-                New-Item -ItemType Directory -Path $destPath -Force | Out-Null
-                Expand-Archive -Path $open.FileName -DestinationPath $destPath -Force
-                Update-AppUIList
-                [System.Windows.MessageBox]::Show("Khôi phục dữ liệu thành công!`nTài khoản '$newName' đã sẵn sàng.", "Hoàn tất", 0, 64)
-            }
-        } catch {
-            [System.Windows.MessageBox]::Show("Lỗi khi khôi phục dữ liệu:`n$($_.Exception.Message)", "Lỗi khôi phục", 0, 16)
-        }
-    }
-}
 
 function Set-GlobalBrush {
     param($key, $hex)
@@ -382,10 +296,7 @@ function Set-AppTheme {
             Set-GlobalBrush "BorderBrush" "#3A3A3C"
             Set-GlobalBrush "TextMain" "#FFFFFF"
             Set-GlobalBrush "TextSec" "#98989D"
-            # Nút phụ (Sao lưu/Khôi phục) - nền tối, viền nhẹ
-            Set-GlobalBrush "SecondaryBtnBg" "#3A3A3C"
-            Set-GlobalBrush "SecondaryBtnFg" "#FFFFFF"
-            Set-GlobalBrush "SecondaryBtnBorder" "#48484A"
+
             # Nút đóng tất cả - nền xanh, chữ trắng
             Set-GlobalBrush "KillAllBtnBg" "#007AFF"
             Set-GlobalBrush "KillAllBtnFg" "#FFFFFF"
@@ -407,10 +318,7 @@ function Set-AppTheme {
             Set-GlobalBrush "BorderBrush" "#D2D2D7"
             Set-GlobalBrush "TextMain" "#1D1D1F"
             Set-GlobalBrush "TextSec" "#86868B"
-            # Nút phụ (Sao lưu/Khôi phục) - nền trắng, viền xám nhạt
-            Set-GlobalBrush "SecondaryBtnBg" "#FFFFFF"
-            Set-GlobalBrush "SecondaryBtnFg" "#1D1D1F"
-            Set-GlobalBrush "SecondaryBtnBorder" "#D2D2D7"
+
             # Nút đóng tất cả - nền đỏ, chữ trắng
             Set-GlobalBrush "KillAllBtnBg" "#FF3B30"
             Set-GlobalBrush "KillAllBtnFg" "#FFFFFF"
@@ -938,8 +846,7 @@ Update-AppAccent $Global:CurrentAccent -isInitial $true
 
 $Global:BtnLight.Add_Click({ Set-AppTheme "Light" })
 $Global:BtnDark.Add_Click({ Set-AppTheme "Dark" })
-$Global:BtnExport.Add_Click({ Export-ProfileUI })
-$Global:BtnImport.Add_Click({ Import-ProfileUI })
+
 
 $Global:window.FindName("BtnFB").Add_Click({ Start-Process "https://fb.me/congtruongit" | Out-Null })
 $Global:window.FindName("BtnTG").Add_Click({ Start-Process "https://t.me/congtruongit" | Out-Null })

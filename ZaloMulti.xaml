@@ -1,4 +1,4 @@
-﻿<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Quản lý ZalỏMulti" Height="700" Width="1000"
         Background="Transparent" WindowStyle="None" AllowsTransparency="True"
@@ -14,10 +14,6 @@
         <SolidColorBrush x:Key="TextMain" Color="#FFFFFF"/>
         <SolidColorBrush x:Key="TextSec" Color="#98989D"/>
         
-        <!-- Nút phụ (Sao lưu / Khôi phục) -->
-        <SolidColorBrush x:Key="SecondaryBtnBg" Color="#3A3A3C"/>
-        <SolidColorBrush x:Key="SecondaryBtnFg" Color="#FFFFFF"/>
-        <SolidColorBrush x:Key="SecondaryBtnBorder" Color="#48484A"/>
         
         <!-- Nút đóng tất cả -->
         <SolidColorBrush x:Key="KillAllBtnBg" Color="#007AFF"/>
@@ -158,34 +154,6 @@
             </Setter>
         </Style>
 
-        <!-- Nút trong thẻ tài khoản (MỞ TÀI KHOẢN) -->
-        <Style x:Key="RoundBtn" TargetType="Button">
-            <Setter Property="Background" Value="{DynamicResource SecondaryBtnBg}"/>
-            <Setter Property="Foreground" Value="{DynamicResource SecondaryBtnFg}"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Height" Value="38"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="RoundBorder" Background="{TemplateBinding Background}" CornerRadius="10" 
-                                BorderBrush="{DynamicResource SecondaryBtnBorder}" BorderThickness="1">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="RoundBorder" Property="Background" Value="{DynamicResource AccentBlue}"/>
-                                <Setter Property="Foreground" Value="White"/>
-                                <Setter TargetName="RoundBorder" Property="BorderBrush" Value="{DynamicResource AccentBlue}"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="RoundBorder" Property="Opacity" Value="0.8"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
 
         <!-- Nút tròn chọn màu -->
         <Style x:Key="ColorCircle" TargetType="Button">
@@ -226,16 +194,7 @@
                         <!-- Nút thêm tài khoản -->
                         <Button Name="BtnAdd" Content="＋ Thêm tài khoản" Style="{StaticResource AccentBtn}" FontSize="15" Margin="0,0,0,14"/>
                         
-                        <!-- Nút Sao lưu / Khôi phục -->
-                        <Grid Margin="0,0,0,28">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Button Name="BtnExport" Content="📦 Sao lưu" Style="{StaticResource RoundBtn}" Grid.Column="0" Margin="0,0,4,0" FontSize="12"/>
-                            <Button Name="BtnImport" Content="📥 Khôi phục" Style="{StaticResource RoundBtn}" Grid.Column="1" Margin="4,0,0,0" FontSize="12"/>
-                        </Grid>
-                        
+
                         <!-- Chuyển đổi chủ đề -->
                         <TextBlock Text="Giao diện" Foreground="{DynamicResource TextSec}" FontSize="12" Margin="0,0,0,8" HorizontalAlignment="Center"/>
                         <Border Background="{DynamicResource BgToggle}" CornerRadius="10" Padding="3" HorizontalAlignment="Center">

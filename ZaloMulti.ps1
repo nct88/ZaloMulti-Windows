@@ -25,7 +25,7 @@ trap {
 }
 
 # Cấu hình toàn cục
-$Global:Version = "2.1.1" # Cập nhật giao diện, sửa lỗi khởi động, thêm bảo vệ nguồn
+$Global:Version = "2.1.2" # Sửa lỗi không chạy được clone từ shortcut trên bản đóng gói
 $Global:AppPath = $PSScriptRoot
 if (-not $Global:AppPath) {
     $Global:AppPath = [System.IO.Path]::GetDirectoryName([System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName)
@@ -472,16 +472,28 @@ function New-AppShortcut {
         $batPath = Join-Path $batFolder "$safeName.bat"
         
         $scriptPath = Join-Path $Global:AppPath "ZaloMulti.ps1"
-        # Nội dung .bat vẫn giữ tên gốc (có dấu) trong tham số -LaunchInstance
-        $batContent = "@echo off`nchcp 65001 >nul`nstart `"`" powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$scriptPath`" -LaunchInstance `"$name`""
+        $exePath = Join-Path $Global:AppPath "ZaloMulti.exe"
+        
+        # Nếu có file EXE đóng gói thì ưu tiên chạy qua EXE để mượt mà hơn và tránh script policy
+        if (Test-Path $exePath) {
+            $batContent = "@echo off`nchcp 65001 >nul`nstart `"`" `"$exePath`" -LaunchInstance `"$name`""
+        } else {
+            $batContent = "@echo off`nchcp 65001 >nul`nstart `"`" powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$scriptPath`" -LaunchInstance `"$name`""
+        }
         $utf8NoBom = New-Object System.Text.UTF8Encoding $false
         [System.IO.File]::WriteAllText($batPath, $batContent, $utf8NoBom)
 
         $WshShell = New-Object -ComObject WScript.Shell
         $Shortcut = $WshShell.CreateShortcut($ShortcutPath)
-        # Dùng powershell.exe trực tiếp thay vì cmd.exe → cho phép Pin to Start
-        $Shortcut.TargetPath = "powershell.exe"
-        $Shortcut.Arguments = "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"$scriptPath`" -LaunchInstance `"$name`""
+        
+        if (Test-Path $exePath) {
+            $Shortcut.TargetPath = $exePath
+            $Shortcut.Arguments = "-LaunchInstance `"$name`""
+        } else {
+            # Dùng powershell.exe trực tiếp thay vì cmd.exe → cho phép Pin to Start
+            $Shortcut.TargetPath = "powershell.exe"
+            $Shortcut.Arguments = "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"$scriptPath`" -LaunchInstance `"$name`""
+        }
         $Shortcut.WindowStyle = 7
         $Shortcut.Description = $name
         
@@ -716,6 +728,9 @@ function Repair-OldShortcuts {
     if (-not (Test-Path $batFolder)) { return }
     
     $scriptPath = Join-Path $Global:AppPath "ZaloMulti.ps1"
+    $exePath = Join-Path $Global:AppPath "ZaloMulti.exe"
+    $useExe = Test-Path $exePath
+    
     $batFiles = Get-ChildItem $batFolder -Filter *.bat -ErrorAction SilentlyContinue
     foreach ($bat in $batFiles) {
         $content = Get-Content $bat.FullName -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
@@ -728,7 +743,11 @@ function Repair-OldShortcuts {
                 $accountName = $Matches[1]
             }
             # Tạo lại nội dung .bat đúng
-            $fixedContent = "@echo off`nchcp 65001 >nul`nstart `"`" powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$scriptPath`" -LaunchInstance `"$accountName`""
+            if ($useExe) {
+                $fixedContent = "@echo off`nchcp 65001 >nul`nstart `"`" `"$exePath`" -LaunchInstance `"$accountName`""
+            } else {
+                $fixedContent = "@echo off`nchcp 65001 >nul`nstart `"`" powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$scriptPath`" -LaunchInstance `"$accountName`""
+            }
             $utf8NoBom = New-Object System.Text.UTF8Encoding $false
             [System.IO.File]::WriteAllText($bat.FullName, $fixedContent, $utf8NoBom)
         }

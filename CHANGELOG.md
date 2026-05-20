@@ -4,6 +4,17 @@ Tất cả thay đổi đáng chú ý của dự án được ghi lại tại đ
 
 ---
 
+## v2.1.2 — 20/05/2026
+
+- **Sửa lỗi không khởi chạy được clone từ Shortcut**: Ưu tiên trỏ lối tắt ngoài màn hình (.lnk) và kịch bản lệnh (.bat) trực tiếp đến file biên dịch `ZaloMulti.exe` (thay vì gọi qua powershell.exe). Giúp tăng độ mượt mà khi mở clone, loại bỏ hiện tượng nháy cửa sổ console đen và tránh bị chính sách chặn thực thi PowerShell của Windows.
+
+## v2.1.1 — 19/05/2026
+
+- **Tối ưu hóa tốc độ & chống đơ chuột**: Tách kịch bản chạy clone `Start-ZaloInstance` hoạt động hoàn toàn bất đồng bộ, loại bỏ triệt để hiện tượng chuột bị xoay/đơ khi mở hàng loạt tài khoản.
+- **Trace lỗi thông minh**: Bổ sung bộ ghi log/trace toàn cục `Write-AppLog` giúp ghi nhận chi tiết quá trình khởi chạy để dễ chẩn đoán khi phát sinh lỗi.
+- **Trình đóng gói mới**: Chuyển đổi công cụ đóng gói sang WinRAR SFX cho bộ cài đặt `ZaloMulti_Setup.exe`.
+- **Cải tiến phát hiện thư mục Zalo**: Áp dụng cơ chế tìm bản Versioned để bỏ qua Squirrel Bootstrapper hiệu quả hơn.
+
 ## v2.1.0 — 04/05/2026
 
 - **Sửa lỗi crash khi khởi động từ EXE**: Khắc phục lỗi `Cannot bind argument to parameter 'Path'` do `$PSScriptRoot` trả về chuỗi rỗng khi chạy từ file `.exe` (ps2exe). Thêm fallback tự phát hiện đường dẫn exe.

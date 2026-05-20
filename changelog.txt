@@ -1,4 +1,2 @@
-- Sửa lỗi crash khi khởi động từ file EXE ($PSScriptRoot rỗng)
-- Thêm biểu tượng Zalo cho file EXE
-- Đồng bộ màu nút theo chế độ: Sáng = đỏ, Tối = xanh
-- Đóng gói EXE mới phiên bản 2.1.0
+- Sửa lỗi không khởi chạy được tài khoản clone từ Shortcut màn hình trên bản đóng gói EXE (2.1.1)
+- Lối tắt ngoài màn hình giờ trỏ thẳng vào file EXE để tăng độ mượt mà và tránh bị chính sách Windows chặn script PowerShell

@@ -4,6 +4,18 @@ Tất cả thay đổi đáng chú ý của dự án được ghi lại tại đ
 
 ---
 
+## v2.1.5 — 30/05/2026
+
+- **Ẩn tài khoản hệ thống**: Tự động lọc bỏ các thư mục hệ thống như `ZaloRuntimes` và `Master_Zalo_Cache` khỏi danh sách hiển thị tài khoản trên giao diện chính của ứng dụng.
+
+## v2.1.4 — 21/05/2026
+
+- **Tự động nhận diện trạng thái tài khoản khi reload/quét QR**: Cập nhật hàm `Get-AccountStatus` với cơ chế quét tiến trình tự phục hồi (self-healing). Khi các PID lưu trong `pid.txt` không còn chạy (do Zalo tự khởi động lại sau khi quét mã QR thành công), hệ thống sẽ quét các tiến trình Zalo khác đang chạy và kiểm tra xem có tiến trình nào được mở từ thư mục dữ liệu tương ứng hay không, sau đó cập nhật lại file `pid.txt`.
+
+## v2.1.3 — 21/05/2026
+
+- **Khắc phục xung đột nghe gọi (VoIP)**: Triển khai cơ chế vá tĩnh named pipe (static named pipe patching) cho từng phân vùng dữ liệu tài khoản clone, giải quyết triệt để lỗi xung đột cuộc gọi giữa các phiên bản Zalo.
+
 ## v2.1.2 — 20/05/2026
 
 - **Sửa lỗi không khởi chạy được clone từ Shortcut**: Ưu tiên trỏ lối tắt ngoài màn hình (.lnk) và kịch bản lệnh (.bat) trực tiếp đến file biên dịch `ZaloMulti.exe` (thay vì gọi qua powershell.exe). Giúp tăng độ mượt mà khi mở clone, loại bỏ hiện tượng nháy cửa sổ console đen và tránh bị chính sách chặn thực thi PowerShell của Windows.

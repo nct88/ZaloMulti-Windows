@@ -1,2 +1,4 @@
-- Sửa lỗi không khởi chạy được tài khoản clone từ Shortcut màn hình trên bản đóng gói EXE (2.1.1)
-- Lối tắt ngoài màn hình giờ trỏ thẳng vào file EXE để tăng độ mượt mà và tránh bị chính sách Windows chặn script PowerShell
+- Ẩn các thư mục hệ thống ZaloRuntimes và Master_Zalo_Cache khỏi danh sách tài khoản (2.1.5)
+- Tự động phát hiện trạng thái tài khoản đang hoạt động sau khi quét mã QR hoặc tải lại (2.1.4)
+- Khắc phục xung đột nghe gọi (VoIP) giữa các tài khoản Zalo clone bằng cơ chế vá tĩnh named pipe (2.1.3)
+- Lối tắt ngoài màn hình trỏ thẳng vào file EXE giúp mở clone siêu mượt và tránh bị chính sách Windows chặn script (2.1.2)

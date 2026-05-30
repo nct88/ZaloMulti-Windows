@@ -1,4 +1,4 @@
-# ============================================================
+﻿# ============================================================
 # ZALỎMULTI - PHIÊN BẢN HOÀN THIỆN
 # BẢN QUYỀN TRUONG.IT
 # ============================================================
@@ -18,14 +18,545 @@ public class Win32 {
 "@
 Add-Type -TypeDefinition $Win32Code -ErrorAction SilentlyContinue
 
+if (-not ([System.Type]::GetType("ZaloAsarPatcher") -or ("ZaloAsarPatcher" -as [type]))) {
+    $PatcherCode = @"
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
+using System.Web.Script.Serialization;
+using System.Runtime.InteropServices;
+using System.Diagnostics;
+
+public static class ZaloAsarPatcher
+{
+    private static int AlignTo4(int value)
+    {
+        return (value + 3) & ~3;
+    }
+
+    private static void CollectEntries(Dictionary<string, object> filesNode, string basePath, List<AsarEntry> entries)
+    {
+        foreach (KeyValuePair<string, object> prop in filesNode)
+        {
+            var node = prop.Value as Dictionary<string, object>;
+            if (node == null) continue;
+
+            string fullPath = string.IsNullOrEmpty(basePath) ? prop.Key : basePath + "/" + prop.Key;
+
+            if (node.ContainsKey("files"))
+            {
+                var files = node["files"] as Dictionary<string, object>;
+                if (files != null)
+                {
+                    CollectEntries(files, fullPath, entries);
+                }
+            }
+            else if (node.ContainsKey("unpacked") && node["unpacked"] is bool && (bool)node["unpacked"])
+            {
+                continue;
+            }
+            else if (node.ContainsKey("offset") && node.ContainsKey("size"))
+            {
+                int offset = int.Parse(node["offset"].ToString());
+                int size = int.Parse(node["size"].ToString());
+                entries.Add(new AsarEntry(fullPath, node, offset, size));
+            }
+        }
+    }
+
+    private class AsarEntry
+    {
+        public string Path { get; set; }
+        public Dictionary<string, object> Node { get; set; }
+        public int Offset { get; set; }
+        public int Size { get; set; }
+        public AsarEntry(string path, Dictionary<string, object> node, int offset, int size)
+        {
+            Path = path;
+            Node = node;
+            Offset = offset;
+            Size = size;
+        }
+    }
+
+    public static bool Patch(string inputAsar, string outputAsar, int instanceIndex)
+    {
+        try
+        {
+            byte[] data = File.ReadAllBytes(inputAsar);
+            if (data.Length < 16) return false;
+
+            int headerBufLen = (int)BitConverter.ToUInt32(data, 4);
+            int fileDataStart = 8 + headerBufLen;
+
+            int jsonStart = -1;
+            for (int i = 8; i < fileDataStart && i < data.Length; i++)
+            {
+                if (data[i] == (byte)'{') { jsonStart = i; break; }
+            }
+            int jsonEnd = -1;
+            for (int i = fileDataStart - 1; i > jsonStart; i--)
+            {
+                if (data[i] == (byte)'}') { jsonEnd = i; break; }
+            }
+            if (jsonStart < 0 || jsonEnd < 0) return false;
+
+            string headerJson = Encoding.UTF8.GetString(data, jsonStart, jsonEnd - jsonStart + 1);
+            
+            var serializer = new JavaScriptSerializer();
+            serializer.MaxJsonLength = int.MaxValue;
+            var header = (Dictionary<string, object>)serializer.DeserializeObject(headerJson);
+            if (header == null) return false;
+
+            var filesNode = header["files"] as Dictionary<string, object>;
+            if (filesNode == null) return false;
+
+            var pkgNode = filesNode["package.json"] as Dictionary<string, object>;
+            if (pkgNode == null) return false;
+
+            int pkgOffset = int.Parse(pkgNode["offset"].ToString());
+            int pkgSize = int.Parse(pkgNode["size"].ToString());
+            string pkgContent = Encoding.UTF8.GetString(data, fileDataStart + pkgOffset, pkgSize);
+            
+            var pkg = (Dictionary<string, object>)serializer.DeserializeObject(pkgContent);
+            if (pkg == null || !pkg.ContainsKey("main")) return false;
+            string mainEntry = pkg["main"].ToString();
+
+            // Find main entry node in header
+            string[] pathParts = mainEntry.Replace('\\', '/').Split('/');
+            Dictionary<string, object> mainNode = filesNode;
+            for (int i = 0; i < pathParts.Length; i++)
+            {
+                if (i < pathParts.Length - 1)
+                {
+                    var subDir = mainNode[pathParts[i]] as Dictionary<string, object>;
+                    mainNode = subDir != null && subDir.ContainsKey("files") ? subDir["files"] as Dictionary<string, object> : null;
+                }
+                else
+                {
+                    mainNode = mainNode != null && mainNode.ContainsKey(pathParts[i]) ? mainNode[pathParts[i]] as Dictionary<string, object> : null;
+                }
+                if (mainNode == null) break;
+            }
+
+            if (mainNode == null || !mainNode.ContainsKey("offset")) return false;
+
+            var entries = new List<AsarEntry>();
+            CollectEntries(filesNode, "", entries);
+            entries.Sort((a, b) => a.Offset.CompareTo(b.Offset));
+
+            var sb = new StringBuilder();
+            sb.Append(";(function(){try{var _f=require('fs'),_path=require('path');");
+            sb.Append("var _cp=require('child_process');");
+            sb.Append("var _origSpawn=_cp.spawn;");
+            sb.Append("_cp.spawn=function(_cmd,_args,_opts){");
+            sb.Append("try{");
+            sb.Append("if(_cmd&&(typeof _cmd==='string')&&_cmd.toLowerCase().indexOf('zalocap')>-1){");
+            sb.Append("var _lockPath=_path.join(_path.dirname(process.execPath),'plugins','capture','capture.lock');");
+            sb.Append("var _canCapture=true;");
+            sb.Append("if(_f.existsSync(_lockPath)){try{var _lk=JSON.parse(_f.readFileSync(_lockPath,'utf8'));");
+            sb.Append("if(_lk&&_lk.time&&(Date.now()-parseInt(_lk.time)<10000)){_canCapture=false;}}catch(e){}}");
+            sb.Append("if(!_canCapture){_cmd='./zalocap_blocked';}");
+            sb.Append("else{try{_f.writeFileSync(_lockPath,JSON.stringify({id:process.pid,time:Date.now()}));");
+            sb.Append("var _hb=setInterval(function(){try{_f.writeFileSync(_lockPath,JSON.stringify({id:process.pid,time:Date.now()}));}catch(e){}},5000);");
+            sb.Append("}catch(e){}}");
+            sb.Append("}");
+            sb.Append("}catch(e){}");
+            sb.Append("var _proc=_origSpawn(_cmd,_args,_opts);");
+            sb.Append("if(_cmd&&(typeof _cmd==='string')&&_cmd.toLowerCase().indexOf('zalocap')>-1&&_proc){");
+            sb.Append("_proc.on('exit',function(){try{var _lockPath2=_path.join(_path.dirname(process.execPath),'plugins','capture','capture.lock');");
+            sb.Append("if(_f.existsSync(_lockPath2)){var _lk2=JSON.parse(_f.readFileSync(_lockPath2,'utf8'));");
+            sb.Append("if(_lk2&&_lk2.id==process.pid){_f.unlinkSync(_lockPath2);}}}catch(e){}});}");
+            sb.Append("return _proc;};");
+            sb.Append("}catch(_e){}})();");
+
+            string injectCode = sb.ToString();
+            byte[] injectBytes = Encoding.UTF8.GetBytes(injectCode);
+
+            using (var fileDataStream = new MemoryStream())
+            {
+                foreach (var entry in entries)
+                {
+                    byte[] entryBytes;
+                    if (entry.Path.EndsWith(".js", StringComparison.OrdinalIgnoreCase) || entry.Path == mainEntry)
+                    {
+                        string content = Encoding.UTF8.GetString(data, fileDataStart + entry.Offset, entry.Size);
+                        
+                        string instanceSuffix = instanceIndex.ToString("D2");
+                        content = content.Replace("PipeZCallSend", "PipeZCallSe" + instanceSuffix);
+                        content = content.Replace("PipeZCallRecv", "PipeZCallRe" + instanceSuffix);
+                        
+                        if (entry.Path == mainEntry)
+                        {
+                            byte[] contentBytes = Encoding.UTF8.GetBytes(content);
+                            entryBytes = new byte[injectBytes.Length + contentBytes.Length];
+                            Array.Copy(injectBytes, 0, entryBytes, 0, injectBytes.Length);
+                            Array.Copy(contentBytes, 0, entryBytes, injectBytes.Length, contentBytes.Length);
+                        }
+                        else
+                        {
+                            entryBytes = Encoding.UTF8.GetBytes(content);
+                        }
+                    }
+                    else
+                    {
+                        entryBytes = new byte[entry.Size];
+                        Array.Copy(data, fileDataStart + entry.Offset, entryBytes, 0, entry.Size);
+                    }
+
+                    int newOffset = (int)fileDataStream.Position;
+                    entry.Node["offset"] = newOffset.ToString();
+                    entry.Node["size"] = entryBytes.Length;
+                    fileDataStream.Write(entryBytes, 0, entryBytes.Length);
+                }
+
+                string newHeaderJson = serializer.Serialize(header);
+                byte[] headerStringBytes = Encoding.UTF8.GetBytes(newHeaderJson);
+
+                int stringAligned = AlignTo4(headerStringBytes.Length);
+                int headerPicklePayload = 4 + stringAligned;
+                byte[] headerPickle = new byte[4 + headerPicklePayload];
+                BitConverter.GetBytes((uint)headerPicklePayload).CopyTo(headerPickle, 0);
+                BitConverter.GetBytes((uint)headerStringBytes.Length).CopyTo(headerPickle, 4);
+                Array.Copy(headerStringBytes, 0, headerPickle, 8, headerStringBytes.Length);
+
+                byte[] sizePickle = new byte[8];
+                BitConverter.GetBytes(4u).CopyTo(sizePickle, 0);
+                BitConverter.GetBytes((uint)headerPickle.Length).CopyTo(sizePickle, 4);
+
+                byte[] fileData = fileDataStream.ToArray();
+                using (var output = File.Create(outputAsar))
+                {
+                    output.Write(sizePickle, 0, sizePickle.Length);
+                    output.Write(headerPickle, 0, headerPickle.Length);
+                    output.Write(fileData, 0, fileData.Length);
+                }
+            }
+
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+}
+
+public static class ZaloRuntimeHelper
+{
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool CreateHardLinkW(string lpFileName, string lpExistingFileName, IntPtr lpSecurityAttributes);
+
+    public static string CreateRuntime(string zaloExePath, string profileRoot, string profileLocalAppData, int instanceIndex)
+    {
+        try
+        {
+            if (!File.Exists(zaloExePath)) return null;
+
+            string sourceVersionDir = Path.GetDirectoryName(zaloExePath);
+            string zaloRoot = Path.GetDirectoryName(sourceVersionDir);
+            string versionName = Path.GetFileName(sourceVersionDir);
+
+            string masterCacheRoot = Path.Combine(profileRoot, "Master_Zalo_Cache");
+            string masterCacheVersionDir = Path.Combine(masterCacheRoot, versionName);
+
+            if (!Directory.Exists(masterCacheVersionDir))
+            {
+                if (Directory.Exists(masterCacheRoot))
+                {
+                    try { Directory.Delete(masterCacheRoot, true); } catch {}
+                }
+                CopyDirectoryRecursive(sourceVersionDir, masterCacheVersionDir);
+            }
+
+            sourceVersionDir = masterCacheVersionDir;
+
+            string runtimeRoot = Path.Combine(profileRoot, "ZaloRuntimes", "Instance_" + instanceIndex);
+            string runtimeZaloDir = Path.Combine(runtimeRoot, "Zalo");
+            string runtimeVersionDir = Path.Combine(runtimeZaloDir, versionName);
+            string runtimeExe = Path.Combine(runtimeVersionDir, "Zalo.exe");
+
+            string patchedDir = Path.Combine(profileLocalAppData, "ZaloPatched");
+            Directory.CreateDirectory(patchedDir);
+            string patchedAsar = Path.Combine(patchedDir, "app.asar");
+
+            string versionMarker = Path.Combine(patchedDir, "version.txt");
+            string injectMarker = Path.Combine(patchedDir, "inject_version.txt");
+            string currentVersion = versionName;
+            const string INJECT_BUILD = "4.1.0-staticpipe";
+            bool needsPatch = true;
+
+            if (File.Exists(patchedAsar) && File.Exists(versionMarker) && File.Exists(injectMarker))
+            {
+                string cachedVersion = File.ReadAllText(versionMarker).Trim();
+                string cachedInject = File.ReadAllText(injectMarker).Trim();
+                if (cachedVersion == currentVersion && cachedInject == INJECT_BUILD)
+                {
+                    needsPatch = false;
+                }
+            }
+
+            if (needsPatch)
+            {
+                string sourceAsar = Path.Combine(sourceVersionDir, "resources", "app.asar");
+                if (File.Exists(sourceAsar))
+                {
+                    File.Copy(sourceAsar, patchedAsar, true);
+                    ZaloAsarPatcher.Patch(patchedAsar, patchedAsar, instanceIndex);
+                    File.WriteAllText(versionMarker, currentVersion, Encoding.ASCII);
+                    File.WriteAllText(injectMarker, INJECT_BUILD, Encoding.ASCII);
+                }
+            }
+
+            const string RUNTIME_BUILD = "4.0.5-mastercache";
+            string runtimeMarker = Path.Combine(runtimeRoot, "runtime_build.txt");
+
+            if (File.Exists(runtimeExe) && File.Exists(runtimeMarker))
+            {
+                string cachedBuild = File.ReadAllText(runtimeMarker).Trim();
+                if (cachedBuild != RUNTIME_BUILD)
+                {
+                    try
+                    {
+                        Directory.Delete(runtimeRoot, true);
+                    }
+                    catch {}
+                }
+            }
+            else if (File.Exists(runtimeExe) && !File.Exists(runtimeMarker))
+            {
+                try
+                {
+                    Directory.Delete(runtimeRoot, true);
+                }
+                catch {}
+            }
+
+            if (File.Exists(runtimeExe))
+            {
+                string destAsar = Path.Combine(runtimeVersionDir, "resources", "app.asar");
+                if (File.Exists(patchedAsar))
+                {
+                    File.Copy(patchedAsar, destAsar, true);
+                }
+
+                WriteDummyPackageJson(runtimeVersionDir, versionName);
+
+                string existingZaloCap = Path.Combine(runtimeVersionDir, "plugins", "capture", "ZaloCap.exe");
+                if (File.Exists(existingZaloCap))
+                {
+                    try { File.Delete(existingZaloCap); } catch {}
+                }
+
+                return runtimeExe;
+            }
+
+            Directory.CreateDirectory(runtimeVersionDir);
+            CopyDirectoryWithHardlinks(sourceVersionDir, runtimeVersionDir, patchedAsar);
+
+            LinkSiblings(zaloRoot, runtimeZaloDir, versionName);
+
+            WriteDummyPackageJson(runtimeVersionDir, versionName);
+
+            string zaloCapPath = Path.Combine(runtimeVersionDir, "plugins", "capture", "ZaloCap.exe");
+            if (File.Exists(zaloCapPath))
+            {
+                try { File.Delete(zaloCapPath); } catch {}
+            }
+
+            if (File.Exists(runtimeExe))
+            {
+                File.WriteAllText(runtimeMarker, RUNTIME_BUILD, Encoding.ASCII);
+                return runtimeExe;
+            }
+
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static void WriteDummyPackageJson(string runtimeVersionDir, string versionName)
+    {
+        try
+        {
+            string versionStr = versionName.Replace("Zalo-", "");
+            string dummyJson = "{\"name\":\"zalo\",\"version\":\"" + versionStr + "\"}";
+            
+            var currDir = new DirectoryInfo(runtimeVersionDir);
+            for (int i = 0; i < 6 && currDir != null; i++)
+            {
+                string pkg = Path.Combine(currDir.FullName, "package.json");
+                if (!File.Exists(pkg))
+                {
+                    File.WriteAllText(pkg, dummyJson, Encoding.UTF8);
+                }
+                currDir = currDir.Parent;
+            }
+
+            string unpackedDir = Path.Combine(runtimeVersionDir, "resources", "app.asar.unpacked");
+            Directory.CreateDirectory(unpackedDir);
+            string unpackedPkg = Path.Combine(unpackedDir, "package.json");
+            if (!File.Exists(unpackedPkg))
+            {
+                File.WriteAllText(unpackedPkg, dummyJson, Encoding.UTF8);
+            }
+            
+            string resourcesPkg = Path.Combine(runtimeVersionDir, "resources", "package.json");
+            if (!File.Exists(resourcesPkg))
+            {
+                File.WriteAllText(resourcesPkg, dummyJson, Encoding.UTF8);
+            }
+        }
+        catch {}
+    }
+
+    private static void CopyDirectoryRecursive(string sourceDir, string destDir)
+    {
+        Directory.CreateDirectory(destDir);
+        foreach (var file in Directory.GetFiles(sourceDir))
+        {
+            string destFile = Path.Combine(destDir, Path.GetFileName(file));
+            File.Copy(file, destFile, true);
+        }
+        foreach (var subDir in Directory.GetDirectories(sourceDir))
+        {
+            CopyDirectoryRecursive(subDir, Path.Combine(destDir, Path.GetFileName(subDir)));
+        }
+    }
+
+    private static void CopyDirectoryWithHardlinks(string sourceDir, string destDir, string patchedAsarPath)
+    {
+        Directory.CreateDirectory(destDir);
+
+        foreach (var sourceFile in Directory.GetFiles(sourceDir))
+        {
+            string fileName = Path.GetFileName(sourceFile);
+            string destFile = Path.Combine(destDir, fileName);
+
+            if (fileName.Equals("app.asar", StringComparison.OrdinalIgnoreCase))
+            {
+                if (File.Exists(patchedAsarPath))
+                {
+                    File.Copy(patchedAsarPath, destFile, true);
+                }
+                continue;
+            }
+
+            if (fileName.Equals("ZaloCap.exe", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (!File.Exists(destFile))
+            {
+                bool linked = CreateHardLinkW(destFile, sourceFile, IntPtr.Zero);
+                if (!linked)
+                {
+                    File.Copy(sourceFile, destFile, true);
+                }
+            }
+        }
+
+        foreach (var subDir in Directory.GetDirectories(sourceDir))
+        {
+            string dirName = Path.GetFileName(subDir);
+            string destSubDir = Path.Combine(destDir, dirName);
+            CopyDirectoryWithHardlinks(subDir, destSubDir, patchedAsarPath);
+        }
+    }
+
+    private static void LinkSiblings(string zaloRoot, string runtimeZaloDir, string versionDirName)
+    {
+        Directory.CreateDirectory(runtimeZaloDir);
+
+        foreach (var file in Directory.GetFiles(zaloRoot))
+        {
+            string name = Path.GetFileName(file);
+            string dest = Path.Combine(runtimeZaloDir, name);
+            if (File.Exists(dest)) continue;
+
+            try
+            {
+                if (!CreateHardLinkW(dest, file, IntPtr.Zero))
+                {
+                    File.Copy(file, dest, true);
+                }
+            }
+            catch {}
+        }
+
+        foreach (var dir in Directory.GetDirectories(zaloRoot))
+        {
+            string name = Path.GetFileName(dir);
+            if (name.StartsWith("Zalo", StringComparison.OrdinalIgnoreCase)) continue;
+            if (name.Equals("resources", StringComparison.OrdinalIgnoreCase)) continue;
+
+            string dest = Path.Combine(runtimeZaloDir, name);
+            if (Directory.Exists(dest)) continue;
+
+            try
+            {
+                CreateJunction(dest, dir);
+            }
+            catch
+            {
+                try
+                {
+                    CopyDirectoryRecursive(dir, dest);
+                }
+                catch {}
+            }
+        }
+    }
+
+    private static void CreateJunction(string junctionPath, string targetDir)
+    {
+        ProcessStartInfo psi = new ProcessStartInfo
+        {
+            FileName = "cmd.exe",
+            Arguments = string.Format("/c mklink /J \"{0}\" \"{1}\"", junctionPath, targetDir),
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        };
+        using (Process proc = Process.Start(psi))
+        {
+            proc.WaitForExit(5000);
+            if (proc.ExitCode != 0 || !Directory.Exists(junctionPath))
+            {
+                throw new IOException("mklink /J failed");
+            }
+        }
+    }
+}
+"@
+    Add-Type -TypeDefinition $PatcherCode -ReferencedAssemblies "System.Web.Extensions" -ErrorAction SilentlyContinue
+}
+
 # Bẫy lỗi toàn cục — hiện MessageBox nếu crash thay vì tắt im lặng
 trap {
     [void][System.Windows.MessageBox]::Show("ZaloMulti gặp lỗi khởi động:`n`n$($_.Exception.Message)`n`nFile: $($_.InvocationInfo.ScriptName)`nDòng: $($_.InvocationInfo.ScriptLineNumber)", "Lỗi ZaloMulti", 0, 16)
     exit 1
 }
 
+function Get-ProfileInstanceIndex {
+    param([string]$profilePath)
+    $profileName = Split-Path $profilePath -Leaf
+    if (-not $profileName) { $profileName = "default" }
+    $hash = 0
+    foreach ($c in $profileName.ToCharArray()) {
+        $hash = ([int]$hash * 31 + [int]$c) -band 0x7FFFFFFF
+    }
+    return ($hash % 98) + 2
+}
+
 # Cấu hình toàn cục
-$Global:Version = "2.1.2" # Sửa lỗi không chạy được clone từ shortcut trên bản đóng gói
+$Global:Version = "2.1.5" # Tự động phát hiện trạng thái tài khoản sau khi reload/quét QR
 $Global:AppPath = $PSScriptRoot
 if (-not $Global:AppPath) {
     $Global:AppPath = [System.IO.Path]::GetDirectoryName([System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName)
@@ -168,7 +699,7 @@ if ($launchIdx -ge 0) {
             $profilePath = Join-Path $Global:ProfileRoot $targetName
         } else {
             # Fallback cho bản cũ dùng số thứ tự
-            $profiles = Get-ChildItem $Global:ProfileRoot | Where-Object { $_.PSIsContainer } | Sort-Object CreationTime
+            $profiles = Get-ChildItem $Global:ProfileRoot | Where-Object { $_.PSIsContainer -and $_.Name -notin @("ZaloRuntimes", "Master_Zalo_Cache") } | Sort-Object CreationTime
             $cleanName = $targetName -replace "Zalo ","" -replace "Tài khoản ",""
             if ($cleanName -as [int]) {
                 $idx = [int]$cleanName - 1
@@ -204,12 +735,36 @@ if ($launchIdx -ge 0) {
                 [System.IO.File]::WriteAllText($configPath, $configContent, $utf8NoBom)
             }
 
+            $instanceIndex = Get-ProfileInstanceIndex -profilePath $profilePath
+            $runtimeExe = [ZaloRuntimeHelper]::CreateRuntime($Global:ZaloPath, $Global:ProfileRoot, $localPath, $instanceIndex)
+            
             $processInfo = New-Object System.Diagnostics.ProcessStartInfo
-            $processInfo.FileName = $Global:ZaloPath
+            if ($runtimeExe) {
+                $processInfo.FileName = $runtimeExe
+            } else {
+                $processInfo.FileName = $Global:ZaloPath
+            }
             $processInfo.UseShellExecute = $false
             $processInfo.EnvironmentVariables["USERPROFILE"] = $profilePath
             $processInfo.EnvironmentVariables["APPDATA"] = $roamingPath
             $processInfo.EnvironmentVariables["LOCALAPPDATA"] = $localPath
+            
+            $processInfo.EnvironmentVariables["ELECTRON_DISABLE_CRASH_REPORTER"] = "1"
+            $processInfo.EnvironmentVariables["ELECTRON_NO_ATTACH_CONSOLE"] = "1"
+            $processInfo.EnvironmentVariables["NODE_OPTIONS"] = "--no-warnings"
+            
+            $existingZaloCount = (Get-Process -Name "Zalo" -ErrorAction SilentlyContinue).Count
+            if ($existingZaloCount -gt 0) {
+                $chromiumArgs = @(
+                    "--disable-webrtc-hw-encoding",
+                    "--disable-webrtc-hw-decoding",
+                    "--force-fieldtrials=WebRTC-Audio-Red-For-Opus/Enabled/",
+                    "--enforce-webrtc-ip-permission-check",
+                    "--force-webrtc-ip-handling-policy=disable_non_proxied_udp"
+                )
+                $processInfo.Arguments = $chromiumArgs -join " "
+            }
+
             try {
                 # Ghi nhan PID Zalo hien co TRUOC khi mo
         $existingPids = @()
@@ -281,7 +836,7 @@ $Global:ImgWS.Source = Get-ZaloBitmap "website.png"
 
 # --- CHỨC NĂNG SAO LƯU ---
 function Export-ProfileUI {
-    $profiles = Get-ChildItem $Global:ProfileRoot -ErrorAction SilentlyContinue | Where-Object { $_.PSIsContainer }
+    $profiles = Get-ChildItem $Global:ProfileRoot -ErrorAction SilentlyContinue | Where-Object { $_.PSIsContainer -and $_.Name -notin @("ZaloRuntimes", "Master_Zalo_Cache") }
     if (-not $profiles -or $profiles.Count -eq 0) { [void][System.Windows.MessageBox]::Show("Không tìm thấy profile nào để sao lưu!", "Sao lưu", 0, 48); return }
 
     $subWin = New-Object System.Windows.Window
@@ -546,12 +1101,35 @@ function Start-ZaloInstance {
         [System.IO.File]::WriteAllText($configPath, $configContent, $utf8NoBom)
     }
 
+    $instanceIndex = Get-ProfileInstanceIndex -profilePath $profilePath
+    $runtimeExe = [ZaloRuntimeHelper]::CreateRuntime($Global:ZaloPath, $Global:ProfileRoot, $localPath, $instanceIndex)
+    
     $processInfo = New-Object System.Diagnostics.ProcessStartInfo
-    $processInfo.FileName = $Global:ZaloPath
+    if ($runtimeExe) {
+        $processInfo.FileName = $runtimeExe
+    } else {
+        $processInfo.FileName = $Global:ZaloPath
+    }
     $processInfo.UseShellExecute = $false
     $processInfo.EnvironmentVariables["USERPROFILE"] = $profilePath
     $processInfo.EnvironmentVariables["APPDATA"] = $roamingPath
     $processInfo.EnvironmentVariables["LOCALAPPDATA"] = $localPath
+    
+    $processInfo.EnvironmentVariables["ELECTRON_DISABLE_CRASH_REPORTER"] = "1"
+    $processInfo.EnvironmentVariables["ELECTRON_NO_ATTACH_CONSOLE"] = "1"
+    $processInfo.EnvironmentVariables["NODE_OPTIONS"] = "--no-warnings"
+    
+    $existingZaloCount = (Get-Process -Name "Zalo" -ErrorAction SilentlyContinue).Count
+    if ($existingZaloCount -gt 0) {
+        $chromiumArgs = @(
+            "--disable-webrtc-hw-encoding",
+            "--disable-webrtc-hw-decoding",
+            "--force-fieldtrials=WebRTC-Audio-Red-For-Opus/Enabled/",
+            "--enforce-webrtc-ip-permission-check",
+            "--force-webrtc-ip-handling-policy=disable_non_proxied_udp"
+        )
+        $processInfo.Arguments = $chromiumArgs -join " "
+    }
     
     try {
         Write-AppLog "Đang khởi chạy tài khoản: $name"
@@ -614,12 +1192,38 @@ function Get-AccountStatus {
             } 
         }
     }
+    
+    # Dự phòng: Quét tất cả tiến trình "Zalo" đang chạy xem có tiến trình nào thuộc thư mục runtime của instance này không
+    try {
+        $instanceIndex = Get-ProfileInstanceIndex -profilePath $profileDir
+        $runtimePattern = "ZaloRuntimes\Instance_$instanceIndex\"
+        $zaloProcesses = Get-Process -Name "Zalo" -ErrorAction SilentlyContinue
+        if ($zaloProcesses) {
+            $matchedPids = @()
+            foreach ($proc in $zaloProcesses) {
+                try {
+                    $procPath = $proc.Path
+                    if (-not $procPath) { $procPath = $proc.MainModule.FileName }
+                    if ($procPath -and $procPath.Replace('/', '\').IndexOf($runtimePattern, [System.StringComparison]::OrdinalIgnoreCase) -ge 0) {
+                        $matchedPids += $proc.Id
+                    }
+                } catch {}
+            }
+            if ($matchedPids.Count -gt 0) {
+                try {
+                    ($matchedPids -join ",") | Set-Content $pidFile -Force -Encoding ASCII
+                } catch {}
+                return $true
+            }
+        }
+    } catch {}
+    
     return $false
 }
 
 # --- CƠ CHẾ CẬP NHẬT TỰ ĐỘNG (ZIP-based) ---
 function Update-AppSilently {
-    $repoBase = "https://raw.githubusercontent.com/nct88/ZaloMulti-Win/main"
+    $repoBase = "https://zlmulti.com/update/win"
     $tempZip = Join-Path $env:TEMP "ZaloMulti_update.zip"
     $tempExtract = Join-Path $env:TEMP "ZaloMulti_update"
     
@@ -673,7 +1277,7 @@ function Update-AppSilently {
 }
 
 function Test-ForUpdates {
-    $repoBase = "https://raw.githubusercontent.com/nct88/ZaloMulti-Win/main"
+    $repoBase = "https://zlmulti.com/update/win"
     
     # Sử dụng Runspace để chạy ngầm hoàn toàn bất đồng bộ, không làm chậm UI
     $ps = [powershell]::Create()
@@ -757,7 +1361,7 @@ function Repair-OldShortcuts {
 function Update-AppUIList {
     Write-AppLog "Rendering UI List..."
     $Global:InstanceGrid.Children.Clear()
-    $profiles = Get-ChildItem $Global:ProfileRoot | Where-Object { $_.PSIsContainer } | Sort-Object CreationTime
+    $profiles = Get-ChildItem $Global:ProfileRoot | Where-Object { $_.PSIsContainer -and $_.Name -notin @("ZaloRuntimes", "Master_Zalo_Cache") } | Sort-Object CreationTime
     $count = 0
     $activeCount = 0
     foreach ($p in $profiles) {
@@ -969,9 +1573,9 @@ $Global:MainScroll.Add_ScrollChanged({
 $Global:BtnToTop.Add_Click({ $Global:MainScroll.ScrollToTop() })
 
 $Global:BtnAdd.Add_Click({
-    $profiles = Get-ChildItem $Global:ProfileRoot -ErrorAction SilentlyContinue | Where-Object { $_.PSIsContainer }
-    if ($profiles -and $profiles.Count -ge 2) {
-        [void][System.Windows.MessageBox]::Show("Phiên bản hiện tại chỉ hỗ trợ tối đa 2 tài khoản!", "Giới hạn tài khoản", 0, 48)
+    $profiles = Get-ChildItem $Global:ProfileRoot -ErrorAction SilentlyContinue | Where-Object { $_.PSIsContainer -and $_.Name -notin @("ZaloRuntimes", "Master_Zalo_Cache") }
+    if ($profiles -and $profiles.Count -ge 4) {
+        [void][System.Windows.MessageBox]::Show("Phiên bản hiện tại chỉ hỗ trợ tối đa 4 tài khoản!", "Giới hạn tài khoản", 0, 48)
         return
     }
 
@@ -1011,7 +1615,7 @@ $Global:TxtVersion.Text = "Phiên bản $Global:Version"
 
 # --- HÀM LÀM MỚI TRẠNG THÁI NHẸ (không rebuild UI) ---
 function Refresh-StatusOnly {
-    $profiles = Get-ChildItem $Global:ProfileRoot -ErrorAction SilentlyContinue | Where-Object { $_.PSIsContainer } | Sort-Object CreationTime
+    $profiles = Get-ChildItem $Global:ProfileRoot -ErrorAction SilentlyContinue | Where-Object { $_.PSIsContainer -and $_.Name -notin @("ZaloRuntimes", "Master_Zalo_Cache") } | Sort-Object CreationTime
     $activeCount = 0
     $totalCount = 0
     foreach ($p in $profiles) {
@@ -1105,3 +1709,5 @@ if ($donateHWID -and $donateHWID -ne "UNKNOWN") {
 $Global:window.ShowDialog() | Out-Null
 Write-AppLog "--- ZALOMULTI EXITED ---"
 $Global:RefreshTimer.Stop()
+
+# Bản quyền thuộc về truong.it - Tác giả: truong.it

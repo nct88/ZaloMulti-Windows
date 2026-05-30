@@ -36,3 +36,4 @@ if (Test-Path $winrarPath) {
 } else {
     Write-Host "Không tìm thấy WinRAR tại C:\Program Files\WinRAR\WinRAR.exe. Vui lòng cài đặt WinRAR." -ForegroundColor Red
 }
+# Bản quyền thuộc về truong.it - Tác giả: truong.it
